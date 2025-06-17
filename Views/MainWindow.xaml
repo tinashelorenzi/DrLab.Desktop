@@ -1,0 +1,450 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window x:Class="DrLab.Desktop.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="280"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Sidebar Navigation -->
+        <Border Grid.Column="0" Background="#FF2F3349" BorderThickness="0,0,1,0" BorderBrush="#FF404556">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,20,0,20">
+
+                    <!-- Logo Section -->
+                    <StackPanel Margin="20,0,20,30" HorizontalAlignment="Left">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="🧪" FontSize="24" VerticalAlignment="Center"/>
+                            <StackPanel>
+                                <TextBlock Text="LabMS" FontSize="18" FontWeight="SemiBold" Foreground="White"/>
+                                <TextBlock Text="Laboratory Management" FontSize="11" Foreground="#FFADB5BD"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- System Status -->
+                    <Border Margin="20,0,20,20" Background="#FF374151" CornerRadius="8" Padding="12">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Ellipse Width="8" Height="8" Fill="#FF10B981"/>
+                            <TextBlock Text="System Online" FontSize="12" Foreground="#FF10B981" FontWeight="Medium"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Navigation Menu -->
+                    <TextBlock Text="Main Navigation" Margin="20,0,20,10" FontSize="12" FontWeight="Medium" Foreground="#FF9CA3AF"/>
+
+                    <StackPanel Spacing="2">
+                        <!-- Dashboard -->
+                        <Button x:Name="DashboardBtn" Click="NavigationButton_Click" Tag="Dashboard"
+                                Background="#FF3B82F6" Foreground="White" 
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Padding="20,12,20,12" Margin="0" BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="📊" FontSize="16"/>
+                                <TextBlock Text="Dashboard" FontSize="14" FontWeight="Medium"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Sample Management -->
+                        <Button x:Name="SampleMgmtBtn" Click="NavigationButton_Click" Tag="SampleManagement"
+                                Background="Transparent" Foreground="#FFADB5BD" 
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Padding="20,12,20,12" Margin="0" BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="🧪" FontSize="16"/>
+                                <TextBlock Text="Sample Management" FontSize="14"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Testing Queue -->
+                        <Button x:Name="TestingQueueBtn" Click="NavigationButton_Click" Tag="TestingQueue"
+                                Background="Transparent" Foreground="#FFADB5BD" 
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Padding="20,12,20,12" Margin="0" BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="⏱️" FontSize="16"/>
+                                <TextBlock Text="Testing Queue" FontSize="14"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Results Entry -->
+                        <Button x:Name="ResultsEntryBtn" Click="NavigationButton_Click" Tag="ResultsEntry"
+                                Background="Transparent" Foreground="#FFADB5BD" 
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Padding="20,12,20,12" Margin="0" BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="📝" FontSize="16"/>
+                                <TextBlock Text="Results Entry" FontSize="14"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Quality Control -->
+                        <Button x:Name="QualityControlBtn" Click="NavigationButton_Click" Tag="QualityControl"
+                                Background="Transparent" Foreground="#FFADB5BD" 
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Padding="20,12,20,12" Margin="0" BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="✅" FontSize="16"/>
+                                <TextBlock Text="Quality Control" FontSize="14"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Reports -->
+                        <Button x:Name="ReportsBtn" Click="NavigationButton_Click" Tag="Reports"
+                                Background="Transparent" Foreground="#FFADB5BD" 
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Padding="20,12,20,12" Margin="0" BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="📊" FontSize="16"/>
+                                <TextBlock Text="Reports" FontSize="14"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Client Management -->
+                        <Button x:Name="ClientMgmtBtn" Click="NavigationButton_Click" Tag="ClientManagement"
+                                Background="Transparent" Foreground="#FFADB5BD" 
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Padding="20,12,20,12" Margin="0" BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="👥" FontSize="16"/>
+                                <TextBlock Text="Client Management" FontSize="14"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Quotations -->
+                        <Button x:Name="QuotationsBtn" Click="NavigationButton_Click" Tag="Quotations"
+                                Background="Transparent" Foreground="#FFADB5BD" 
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Padding="20,12,20,12" Margin="0" BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="💰" FontSize="16"/>
+                                <TextBlock Text="Quotations" FontSize="14"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Analytics -->
+                        <Button x:Name="AnalyticsBtn" Click="NavigationButton_Click" Tag="Analytics"
+                                Background="Transparent" Foreground="#FFADB5BD" 
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Padding="20,12,20,12" Margin="0" BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="📈" FontSize="16"/>
+                                <TextBlock Text="Analytics" FontSize="14"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Settings -->
+                        <Button x:Name="SettingsBtn" Click="NavigationButton_Click" Tag="Settings"
+                                Background="Transparent" Foreground="#FFADB5BD" 
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Padding="20,12,20,12" Margin="0" BorderThickness="0">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="⚙️" FontSize="16"/>
+                                <TextBlock Text="Settings" FontSize="14"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Main Content Area -->
+        <Grid Grid.Column="1" Background="#FFF9FAFB">
+
+            <!-- Header Bar -->
+            <Border Height="70" VerticalAlignment="Top" Background="White" 
+                    BorderThickness="0,0,0,1" BorderBrush="#FFE5E7EB">
+                <Grid Margin="30,0,30,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Page Title -->
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock x:Name="PageTitle" Text="Dashboard" FontSize="24" FontWeight="SemiBold" Foreground="#FF111827"/>
+                        <TextBlock x:Name="PageSubtitle" Text="Laboratory overview and key metrics" FontSize="14" Foreground="#FF6B7280"/>
+                    </StackPanel>
+
+                    <!-- User Profile -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                        <!-- Notification Bell -->
+                        <Button Background="Transparent" BorderThickness="0" Padding="8">
+                            <StackPanel>
+                                <TextBlock Text="🔔" FontSize="20"/>
+                                <Border Background="#FFEF4444" CornerRadius="8" Padding="4,2,4,2" 
+                                        HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-8,0,0">
+                                    <TextBlock Text="1" FontSize="10" Foreground="White" FontWeight="Bold"/>
+                                </Border>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- User Info -->
+                        <Border Background="#FF3B82F6" CornerRadius="20" Padding="12,8,16,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="👤" FontSize="16" Foreground="White"/>
+                                <StackPanel>
+                                    <TextBlock x:Name="UserDisplayName" Text="admin" FontSize="14" FontWeight="Medium" Foreground="White"/>
+                                    <TextBlock x:Name="UserRole" Text="(Administrator)" FontSize="11" Foreground="#FFBFDBFE"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Logout Button -->
+                        <Button x:Name="LogoutBtn" Click="LogoutButton_Click" 
+                                Background="Transparent" BorderBrush="#FFE5E7EB" BorderThickness="1" 
+                                Padding="12,8,12,8" CornerRadius="6">
+                            <TextBlock Text="🚪" FontSize="16"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Main Content -->
+            <ScrollViewer Margin="0,70,0,0" VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="MainContent" Margin="30,30,30,30" Spacing="24">
+
+                    <!-- Dashboard Content -->
+                    <StackPanel x:Name="DashboardContent" Spacing="24">
+
+                        <!-- Key Metrics Cards -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Active Samples -->
+                            <Border Grid.Column="0" Grid.Row="0" Background="White" CornerRadius="12" 
+                                    Padding="24" Margin="0,0,12,12" BorderThickness="1" BorderBrush="#FFE5E7EB">
+                                <StackPanel Spacing="12">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <TextBlock Text="🧪" FontSize="20" Foreground="#FF3B82F6"/>
+                                        <TextBlock Text="Active Samples" FontSize="16" FontWeight="Medium" Foreground="#FF374151"/>
+                                    </StackPanel>
+                                    <TextBlock Text="245" FontSize="32" FontWeight="Bold" Foreground="#FF111827"/>
+                                    <TextBlock Text="+12% from last month" FontSize="12" Foreground="#FF10B981"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Pending Tests -->
+                            <Border Grid.Column="1" Grid.Row="0" Background="White" CornerRadius="12" 
+                                    Padding="24" Margin="6,0,6,12" BorderThickness="1" BorderBrush="#FFE5E7EB">
+                                <StackPanel Spacing="12">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <TextBlock Text="⏱️" FontSize="20" Foreground="#FFF59E0B"/>
+                                        <TextBlock Text="Pending Tests" FontSize="16" FontWeight="Medium" Foreground="#FF374151"/>
+                                    </StackPanel>
+                                    <TextBlock Text="67" FontSize="32" FontWeight="Bold" Foreground="#FF111827"/>
+                                    <TextBlock Text="+5% from last month" FontSize="12" Foreground="#FF10B981"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Completed Today -->
+                            <Border Grid.Column="2" Grid.Row="0" Background="White" CornerRadius="12" 
+                                    Padding="24" Margin="12,0,0,12" BorderThickness="1" BorderBrush="#FFE5E7EB">
+                                <StackPanel Spacing="12">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <TextBlock Text="✅" FontSize="20" Foreground="#FF10B981"/>
+                                        <TextBlock Text="Completed Today" FontSize="16" FontWeight="Medium" Foreground="#FF374151"/>
+                                    </StackPanel>
+                                    <TextBlock Text="89" FontSize="32" FontWeight="Bold" Foreground="#FF111827"/>
+                                    <TextBlock Text="+18% from last month" FontSize="12" Foreground="#FF10B981"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- QC Alerts -->
+                            <Border Grid.Column="0" Grid.Row="1" Background="White" CornerRadius="12" 
+                                    Padding="24" Margin="0,0,12,0" BorderThickness="1" BorderBrush="#FFE5E7EB">
+                                <StackPanel Spacing="12">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <TextBlock Text="⚠️" FontSize="20" Foreground="#FFEF4444"/>
+                                        <TextBlock Text="QC Alerts" FontSize="16" FontWeight="Medium" Foreground="#FF374151"/>
+                                    </StackPanel>
+                                    <TextBlock Text="3" FontSize="32" FontWeight="Bold" Foreground="#FF111827"/>
+                                    <TextBlock Text="-2 from last month" FontSize="12" Foreground="#FFEF4444"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Active Clients -->
+                            <Border Grid.Column="1" Grid.Row="1" Background="White" CornerRadius="12" 
+                                    Padding="24" Margin="6,0,6,0" BorderThickness="1" BorderBrush="#FFE5E7EB">
+                                <StackPanel Spacing="12">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <TextBlock Text="👥" FontSize="20" Foreground="#FF8B5CF6"/>
+                                        <TextBlock Text="Active Clients" FontSize="16" FontWeight="Medium" Foreground="#FF374151"/>
+                                    </StackPanel>
+                                    <TextBlock Text="156" FontSize="32" FontWeight="Bold" Foreground="#FF111827"/>
+                                    <TextBlock Text="+8% from last month" FontSize="12" Foreground="#FF10B981"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Reports Generated -->
+                            <Border Grid.Column="2" Grid.Row="1" Background="White" CornerRadius="12" 
+                                    Padding="24" Margin="12,0,0,0" BorderThickness="1" BorderBrush="#FFE5E7EB">
+                                <StackPanel Spacing="12">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <TextBlock Text="📊" FontSize="20" Foreground="#FF6366F1"/>
+                                        <TextBlock Text="Reports Generated" FontSize="16" FontWeight="Medium" Foreground="#FF374151"/>
+                                    </StackPanel>
+                                    <TextBlock Text="23" FontSize="32" FontWeight="Bold" Foreground="#FF111827"/>
+                                    <TextBlock Text="+15% from last month" FontSize="12" Foreground="#FF10B981"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- Recent Activity and Quick Actions -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Recent Activity -->
+                            <Border Grid.Column="0" Background="White" CornerRadius="12" Padding="24" 
+                                    Margin="0,0,12,0" BorderThickness="1" BorderBrush="#FFE5E7EB">
+                                <StackPanel Spacing="20">
+                                    <TextBlock Text="Recent Activity" FontSize="18" FontWeight="SemiBold" Foreground="#FF111827"/>
+
+                                    <StackPanel Spacing="16">
+                                        <!-- Activity Item 1 -->
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Sample LAB-001 completed" FontSize="14" FontWeight="Medium" Foreground="#FF111827"/>
+                                                <TextBlock Text="2 minutes ago" FontSize="12" Foreground="#FF6B7280"/>
+                                            </StackPanel>
+                                            <Border Grid.Column="1" Background="#FF10B981" CornerRadius="12" Padding="8,4,8,4">
+                                                <TextBlock Text="Completed" FontSize="10" Foreground="White" FontWeight="Bold"/>
+                                            </Border>
+                                        </Grid>
+
+                                        <!-- Activity Item 2 -->
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="QC check failed for batch B-205" FontSize="14" FontWeight="Medium" Foreground="#FF111827"/>
+                                                <TextBlock Text="15 minutes ago" FontSize="12" Foreground="#FF6B7280"/>
+                                            </StackPanel>
+                                            <Border Grid.Column="1" Background="#FFEF4444" CornerRadius="12" Padding="8,4,8,4">
+                                                <TextBlock Text="Failed" FontSize="10" Foreground="White" FontWeight="Bold"/>
+                                            </Border>
+                                        </Grid>
+
+                                        <!-- Activity Item 3 -->
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="New client registration: TechCorp Ltd" FontSize="14" FontWeight="Medium" Foreground="#FF111827"/>
+                                                <TextBlock Text="1 hour ago" FontSize="12" Foreground="#FF6B7280"/>
+                                            </StackPanel>
+                                            <Border Grid.Column="1" Background="#FF3B82F6" CornerRadius="12" Padding="8,4,8,4">
+                                                <TextBlock Text="Pending" FontSize="10" Foreground="White" FontWeight="Bold"/>
+                                            </Border>
+                                        </Grid>
+
+                                        <!-- Activity Item 4 -->
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Results exported for client ABC Labs" FontSize="14" FontWeight="Medium" Foreground="#FF111827"/>
+                                                <TextBlock Text="2 hours ago" FontSize="12" Foreground="#FF6B7280"/>
+                                            </StackPanel>
+                                            <Border Grid.Column="1" Background="#FF10B981" CornerRadius="12" Padding="8,4,8,4">
+                                                <TextBlock Text="Completed" FontSize="10" Foreground="White" FontWeight="Bold"/>
+                                            </Border>
+                                        </Grid>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Quick Actions -->
+                            <Border Grid.Column="1" Background="White" CornerRadius="12" Padding="24" 
+                                    BorderThickness="1" BorderBrush="#FFE5E7EB">
+                                <StackPanel Spacing="20">
+                                    <TextBlock Text="Quick Actions" FontSize="18" FontWeight="SemiBold" Foreground="#FF111827"/>
+
+                                    <StackPanel Spacing="12">
+                                        <!-- New Sample -->
+                                        <Button Background="#FF3B82F6" Foreground="White" CornerRadius="8" 
+                                                Padding="16,12,16,12" HorizontalAlignment="Stretch">
+                                            <StackPanel Spacing="8">
+                                                <TextBlock Text="🧪" FontSize="24" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="New Sample" FontSize="14" FontWeight="Medium" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="Register new sample" FontSize="11" HorizontalAlignment="Center" Opacity="0.8"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- Generate Report -->
+                                        <Button Background="#FF10B981" Foreground="White" CornerRadius="8" 
+                                                Padding="16,12,16,12" HorizontalAlignment="Stretch">
+                                            <StackPanel Spacing="8">
+                                                <TextBlock Text="📊" FontSize="24" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="Generate Report" FontSize="14" FontWeight="Medium" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="Create lab report" FontSize="11" HorizontalAlignment="Center" Opacity="0.8"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- Add Client -->
+                                        <Button Background="#FF8B5CF6" Foreground="White" CornerRadius="8" 
+                                                Padding="16,12,16,12" HorizontalAlignment="Stretch">
+                                            <StackPanel Spacing="8">
+                                                <TextBlock Text="👥" FontSize="24" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="Add Client" FontSize="14" FontWeight="Medium" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="Register new client" FontSize="11" HorizontalAlignment="Center" Opacity="0.8"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- QC Check -->
+                                        <Button Background="#FFF59E0B" Foreground="White" CornerRadius="8" 
+                                                Padding="16,12,16,12" HorizontalAlignment="Stretch">
+                                            <StackPanel Spacing="8">
+                                                <TextBlock Text="✅" FontSize="24" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="QC Check" FontSize="14" FontWeight="Medium" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="Run quality control" FontSize="11" HorizontalAlignment="Center" Opacity="0.8"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Placeholder for other sections -->
+                    <StackPanel x:Name="OtherContent" Visibility="Collapsed">
+                        <Border Background="White" CornerRadius="12" Padding="48" BorderThickness="1" BorderBrush="#FFE5E7EB">
+                            <StackPanel Spacing="16" HorizontalAlignment="Center">
+                                <TextBlock Text="🚧" FontSize="48" HorizontalAlignment="Center"/>
+                                <TextBlock x:Name="PlaceholderTitle" Text="Feature Coming Soon" FontSize="24" FontWeight="SemiBold" 
+                                           Foreground="#FF111827" HorizontalAlignment="Center"/>
+                                <TextBlock x:Name="PlaceholderDescription" Text="This section is under development" 
+                                           FontSize="14" Foreground="#FF6B7280" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</Window>

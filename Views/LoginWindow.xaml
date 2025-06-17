@@ -4,106 +4,151 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <Grid>
-        <!-- Background with gradient -->
+        <!-- Animated Background -->
         <Grid.Background>
-            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#FF0F4C75" Offset="0"/>
-                <GradientStop Color="#FF3282B8" Offset="1"/>
-            </LinearGradientBrush>
+            <RadialGradientBrush Center="0.3,0.3" RadiusX="1.2" RadiusY="1.2">
+                <GradientStop Color="#FF0A2A5C" Offset="0"/>
+                <GradientStop Color="#FF1E3A5F" Offset="0.3"/>
+                <GradientStop Color="#FF2B4A73" Offset="0.6"/>
+                <GradientStop Color="#FF3C6B9D" Offset="1"/>
+            </RadialGradientBrush>
         </Grid.Background>
 
-        <!-- Main login container -->
-        <Border Background="White" 
-                CornerRadius="12" 
-                Padding="40"
-                MaxWidth="400"
-                MaxHeight="500"
+        <!-- Floating Particles Effect -->
+        <Canvas Name="ParticlesCanvas">
+            <Ellipse Width="4" Height="4" Fill="#30FFFFFF" Canvas.Left="100" Canvas.Top="150"/>
+            <Ellipse Width="3" Height="3" Fill="#20FFFFFF" Canvas.Left="300" Canvas.Top="200"/>
+            <Ellipse Width="5" Height="5" Fill="#40FFFFFF" Canvas.Left="500" Canvas.Top="100"/>
+            <Ellipse Width="2" Height="2" Fill="#50FFFFFF" Canvas.Left="200" Canvas.Top="300"/>
+            <Ellipse Width="4" Height="4" Fill="#25FFFFFF" Canvas.Left="700" Canvas.Top="250"/>
+        </Canvas>
+
+        <!-- Main Login Container -->
+        <Border Name="LoginContainer" 
+                MaxWidth="450"
+                MaxHeight="600"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
-                BorderBrush="#FFE0E0E0"
+                CornerRadius="20"
+                Padding="50"
                 BorderThickness="1">
+
+            <!-- Glassmorphism Background -->
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#40FFFFFF" Offset="0"/>
+                    <GradientStop Color="#20FFFFFF" Offset="0.5"/>
+                    <GradientStop Color="#30FFFFFF" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+
+            <Border.BorderBrush>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#60FFFFFF" Offset="0"/>
+                    <GradientStop Color="#30FFFFFF" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.BorderBrush>
 
             <Border.Shadow>
                 <ThemeShadow />
             </Border.Shadow>
 
-            <StackPanel Spacing="24">
-                <!-- Logo/Title -->
-                <StackPanel HorizontalAlignment="Center" Spacing="8">
-                    <TextBlock Text="🧪" 
-                               FontSize="48" 
+            <StackPanel Spacing="32">
+                <!-- Logo/Title with Glow -->
+                <StackPanel HorizontalAlignment="Center" Spacing="12">
+                    <TextBlock Name="LogoIcon"
+                               Text="🧪" 
+                               FontSize="64" 
                                HorizontalAlignment="Center"/>
+
                     <TextBlock Text="DrLab LIMS" 
-                               FontSize="28" 
-                               FontWeight="Bold" 
+                               FontSize="32" 
+                               FontWeight="Light" 
                                HorizontalAlignment="Center"
-                               Foreground="#FF0F4C75"/>
+                               Foreground="White"/>
+
                     <TextBlock Text="Laboratory Information Management System" 
                                FontSize="14" 
                                HorizontalAlignment="Center"
-                               Foreground="#FF666666"/>
+                               Foreground="#B0FFFFFF"
+                               FontWeight="Light"/>
                 </StackPanel>
 
                 <!-- Login Form -->
-                <StackPanel Spacing="16">
+                <StackPanel Spacing="20">
                     <!-- Username -->
-                    <StackPanel Spacing="4">
+                    <StackPanel Spacing="8">
                         <TextBlock Text="Username" 
-                                   FontWeight="SemiBold"
-                                   Foreground="#FF333333"/>
+                                   FontWeight="Medium"
+                                   Foreground="White"
+                                   FontSize="14"/>
                         <TextBox x:Name="UsernameTextBox" 
                                  PlaceholderText="Enter your username"
-                                 Height="40"
-                                 Background="White"
-                                 BorderBrush="#FFCCCCCC"
+                                 Height="48"
+                                 Background="#20FFFFFF"
+                                 BorderBrush="#40FFFFFF"
                                  BorderThickness="1"
-                                 Foreground="Black"
+                                 CornerRadius="8"
+                                 Foreground="White"
                                  FontSize="14"
-                                 Padding="8,0,8,0">
-                            <TextBox.PlaceholderForeground>
-                                <SolidColorBrush Color="#FF999999"/>
-                            </TextBox.PlaceholderForeground>
-                        </TextBox>
+                                 Padding="12,0,12,0"
+                                 PlaceholderForeground="#80FFFFFF"/>
                     </StackPanel>
 
                     <!-- Password -->
-                    <StackPanel Spacing="4">
+                    <StackPanel Spacing="8">
                         <TextBlock Text="Password" 
-                                   FontWeight="SemiBold"
-                                   Foreground="#FF333333"/>
+                                   FontWeight="Medium"
+                                   Foreground="White"
+                                   FontSize="14"/>
                         <PasswordBox x:Name="PasswordBox" 
-                                     Height="40"
-                                     Background="White"
-                                     BorderBrush="#FFCCCCCC"
+                                     PlaceholderText="Enter your password"
+                                     Height="48"
+                                     Background="#20FFFFFF"
+                                     BorderBrush="#40FFFFFF"
                                      BorderThickness="1"
-                                     Foreground="Black"
+                                     CornerRadius="8"
+                                     Foreground="White"
                                      FontSize="14"
-                                     Padding="8,0,8,0"/>
+                                     Padding="12,0,12,0"/>
                     </StackPanel>
 
                     <!-- Login Button -->
                     <Button x:Name="LoginButton" 
                             Content="Sign In" 
                             HorizontalAlignment="Stretch" 
-                            Height="44"
-                            Background="#FF0F4C75"
-                            Foreground="White"
-                            FontWeight="SemiBold"
+                            Height="52"
                             FontSize="16"
-                            Click="LoginButton_Click"/>
+                            FontWeight="SemiBold"
+                            CornerRadius="8"
+                            Foreground="White"
+                            Margin="0,8,0,0"
+                            Click="LoginButton_Click">
+                        <Button.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#80FFFFFF" Offset="0"/>
+                                <GradientStop Color="#40FFFFFF" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Button.Background>
+                        <Button.BorderBrush>
+                            <SolidColorBrush Color="#60FFFFFF"/>
+                        </Button.BorderBrush>
+                    </Button>
 
                     <!-- Status/Error Message -->
                     <TextBlock x:Name="StatusTextBlock" 
                                HorizontalAlignment="Center"
-                               Foreground="Red"
+                               Foreground="#FFFF6B6B"
+                               FontWeight="Medium"
                                Visibility="Collapsed"/>
                 </StackPanel>
 
                 <!-- Footer -->
                 <TextBlock Text="Version 1.0 | © 2024 DrLab Systems - CyberNash Technologies" 
-                           FontSize="12" 
+                           FontSize="11" 
                            HorizontalAlignment="Center"
-                           Foreground="#FF999999"
+                           Foreground="#80FFFFFF"
+                           FontWeight="Light"
                            Margin="0,16,0,0"/>
             </StackPanel>
         </Border>
