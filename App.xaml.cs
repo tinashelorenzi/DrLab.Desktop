@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using DrLab.Desktop.Services;
 using DrLab.Desktop.Views;
@@ -24,11 +25,29 @@ namespace DrLab.Desktop
         {
             var builder = Host.CreateDefaultBuilder();
 
-            // Add configuration
+            // Add configuration with proper path resolution for WinUI 3
             builder.ConfigureAppConfiguration((context, config) =>
             {
-                config.SetBasePath(Directory.GetCurrentDirectory());
-                config.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+                // Get the application's base directory instead of current directory
+                var appDirectory = AppContext.BaseDirectory;
+
+                // Alternative: Use the directory where the executable is located
+                // var appDirectory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+
+                config.SetBasePath(appDirectory);
+
+                // Try to load appsettings.json, but make it optional and provide fallback
+                config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+
+                // Add in-memory configuration as fallback
+                config.AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    ["ApiSettings:BaseUrl"] = "http://localhost:8000",
+                    ["ApiSettings:LoginEndpoint"] = "/api/auth/login/",
+                    ["ApiSettings:Timeout"] = "30",
+                    ["AppSettings:AppName"] = "DrLab LIMS Desktop",
+                    ["AppSettings:Version"] = "1.0.0"
+                });
             });
 
             // Add services
@@ -50,13 +69,13 @@ namespace DrLab.Desktop
             if (sessionManager.LoadSavedSession() && sessionManager.IsLoggedIn)
             {
                 // User has a valid saved session, go directly to main window
-                var mainWindow = new MainWindow();
+                var mainWindow = new Views.MainWindow();
                 mainWindow.Activate();
             }
             else
             {
                 // Show login window
-                var loginWindow = new LoginWindow();
+                var loginWindow = new Views.LoginWindow();
                 loginWindow.Activate();
             }
         }

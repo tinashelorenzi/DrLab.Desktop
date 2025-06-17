@@ -25,7 +25,7 @@ namespace DrLab.Desktop
     {
         public MainWindow()
         {
-            InitializeComponent();
+            this.InitializeComponent();
         }
     }
 }
