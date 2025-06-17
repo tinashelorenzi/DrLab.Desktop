@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "DrLab.Desktop (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "DrLab.Desktop (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
