@@ -1,6 +1,4 @@
 ﻿using System;
-using System.IO;
-using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -12,159 +10,127 @@ namespace DrLab.Desktop.Services
 {
     public class ApiService
     {
+        private readonly HttpClient _httpClient;
         private readonly string _baseUrl;
         private readonly UserSessionManager _sessionManager;
-        private readonly int _timeout;
 
         public ApiService(IConfiguration configuration)
         {
-            _baseUrl = configuration["ApiSettings:BaseUrl"];
+            _httpClient = new HttpClient();
+            _baseUrl = configuration["ApiSettings:BaseUrl"] ?? "http://localhost:8000";
             _sessionManager = UserSessionManager.Instance;
-            _timeout = configuration.GetValue<int>("ApiSettings:Timeout", 30) * 1000; // Convert to milliseconds
+
+            // Set default timeout
+            var timeoutSeconds = configuration.GetValue<int>("ApiSettings:Timeout", 30);
+            _httpClient.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
         }
 
-        public async Task<LoginResponse> LoginAsync(string username, string password)
+        public async Task<LoginResponse?> LoginAsync(string username, string password)
         {
+            // Create simple login request matching Django backend expectations
+            var loginRequest = new
+            {
+                username = username,
+                password = password
+            };
+
+            var loginUrl = $"{_baseUrl}/api/auth/login/";
+
             try
             {
-                // Create the simplest possible login request
-                var loginData = new
+                // Manually serialize JSON and create StringContent
+                var jsonString = JsonSerializer.Serialize(loginRequest);
+                var content = new StringContent(jsonString, Encoding.UTF8, "application/json");
+
+                // Clear headers and set explicitly
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+
+                // Debug: Log the request
+                System.Diagnostics.Debug.WriteLine($"Sending login request to: {loginUrl}");
+                System.Diagnostics.Debug.WriteLine($"Request JSON: {jsonString}");
+                System.Diagnostics.Debug.WriteLine($"Content-Type: application/json");
+
+                var response = await _httpClient.PostAsync(loginUrl, content);
+
+                System.Diagnostics.Debug.WriteLine($"Response status: {response.StatusCode}");
+
+                if (response.IsSuccessStatusCode)
                 {
-                    username = username,
-                    password = password
-                };
+                    var jsonResponse = await response.Content.ReadAsStringAsync();
+                    System.Diagnostics.Debug.WriteLine($"Response content: {jsonResponse}");
 
-                var jsonPayload = JsonSerializer.Serialize(loginData);
-                var url = $"{_baseUrl}/api/auth/login/";
-
-                System.Diagnostics.Debug.WriteLine($"=== RAW HTTP LOGIN REQUEST ===");
-                System.Diagnostics.Debug.WriteLine($"URL: {url}");
-                System.Diagnostics.Debug.WriteLine($"JSON: {jsonPayload}");
-
-                // Use WebRequest instead of HttpClient
-                var request = (HttpWebRequest)WebRequest.Create(url);
-                request.Method = "POST";
-                request.ContentType = "application/json";
-                request.Accept = "application/json";
-                request.UserAgent = "DrLab-Desktop/1.0";
-                request.Timeout = _timeout;
-                request.ReadWriteTimeout = _timeout;
-
-                // Write the request body
-                var data = Encoding.UTF8.GetBytes(jsonPayload);
-                request.ContentLength = data.Length;
-
-                using (var stream = await request.GetRequestStreamAsync())
-                {
-                    await stream.WriteAsync(data, 0, data.Length);
-                }
-
-                // Get the response
-                using (var response = (HttpWebResponse)await request.GetResponseAsync())
-                using (var responseStream = response.GetResponseStream())
-                using (var reader = new StreamReader(responseStream))
-                {
-                    var responseContent = await reader.ReadToEndAsync();
-
-                    System.Diagnostics.Debug.WriteLine($"=== RAW HTTP RESPONSE ===");
-                    System.Diagnostics.Debug.WriteLine($"Status: {response.StatusCode}");
-                    System.Diagnostics.Debug.WriteLine($"Content: {responseContent}");
-
-                    if (response.StatusCode == HttpStatusCode.OK)
+                    var loginResponse = JsonSerializer.Deserialize<LoginResponse>(jsonResponse, new JsonSerializerOptions
                     {
-                        var loginResponse = JsonSerializer.Deserialize<LoginResponse>(responseContent, new JsonSerializerOptions
-                        {
-                            PropertyNameCaseInsensitive = true
-                        });
+                        PropertyNameCaseInsensitive = true
+                    });
 
+                    // Save session if login response is valid
+                    if (loginResponse != null)
+                    {
                         _sessionManager.SaveSession(loginResponse);
-                        return loginResponse;
                     }
-                    else
-                    {
-                        throw new HttpRequestException($"Login failed: {response.StatusCode} - {responseContent}");
-                    }
-                }
-            }
-            catch (WebException ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"=== WEB EXCEPTION ===");
-                System.Diagnostics.Debug.WriteLine($"Status: {ex.Status}");
-                System.Diagnostics.Debug.WriteLine($"Message: {ex.Message}");
 
-                if (ex.Response != null)
-                {
-                    using (var errorResponse = (HttpWebResponse)ex.Response)
-                    using (var errorStream = errorResponse.GetResponseStream())
-                    using (var errorReader = new StreamReader(errorStream))
-                    {
-                        var errorContent = await errorReader.ReadToEndAsync();
-                        System.Diagnostics.Debug.WriteLine($"Error Response: {errorContent}");
-                        throw new HttpRequestException($"Login failed: {errorResponse.StatusCode} - {errorContent}");
-                    }
+                    return loginResponse;
                 }
                 else
                 {
-                    throw new Exception($"Network error: {ex.Message}");
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    System.Diagnostics.Debug.WriteLine($"Error response: {errorContent}");
+                    throw new HttpRequestException($"Login failed: {response.StatusCode} - {errorContent}");
                 }
+            }
+            catch (HttpRequestException)
+            {
+                throw;
+            }
+            catch (TaskCanceledException)
+            {
+                throw new TimeoutException("Login request timed out. Please check your connection.");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"=== GENERAL EXCEPTION ===");
-                System.Diagnostics.Debug.WriteLine($"Type: {ex.GetType().Name}");
-                System.Diagnostics.Debug.WriteLine($"Message: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack: {ex.StackTrace}");
-                throw;
+                throw new Exception($"Unexpected error during login: {ex.Message}", ex);
             }
         }
 
-        public async Task LogoutAsync()
+        private static string GetDeviceFingerprint()
+        {
+            // Simplified device fingerprint for future use
+            return $"{Environment.MachineName}-{Environment.UserName}";
+        }
+
+        public async Task<bool> LogoutAsync()
         {
             try
             {
+                var logoutUrl = $"{_baseUrl}/api/auth/logout/";
                 var token = _sessionManager.GetAccessToken();
+
                 if (!string.IsNullOrEmpty(token))
                 {
-                    var url = $"{_baseUrl}/api/auth/logout/";
-                    var request = (HttpWebRequest)WebRequest.Create(url);
-                    request.Method = "POST";
-                    request.Headers.Add("Authorization", $"Bearer {token}");
-                    request.Timeout = _timeout;
-
-                    using (var response = (HttpWebResponse)await request.GetResponseAsync())
-                    {
-                        // Logout successful
-                    }
+                    _httpClient.DefaultRequestHeaders.Authorization =
+                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
                 }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Logout failed: {ex.Message}");
-            }
-            finally
-            {
+
+                var response = await _httpClient.PostAsync(logoutUrl, null);
+
+                // Clear session regardless of server response
                 _sessionManager.ClearSession();
+
+                return response.IsSuccessStatusCode;
             }
-        }
-
-        public void SetAuthorizationHeader()
-        {
-            // Not applicable for WebRequest-based implementation
-        }
-
-        private string GetDeviceFingerprint()
-        {
-            var machineName = Environment.MachineName;
-            var userName = Environment.UserName;
-            var osVersion = Environment.OSVersion.ToString();
-
-            var fingerprint = $"{machineName}-{userName}-{osVersion}";
-            return Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(fingerprint));
+            catch
+            {
+                // Clear session even if logout request fails
+                _sessionManager.ClearSession();
+                return false;
+            }
         }
 
         public void Dispose()
         {
-            // No resources to dispose with WebRequest
+            _httpClient.Dispose();
         }
     }
 }

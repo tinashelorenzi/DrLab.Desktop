@@ -12,8 +12,8 @@ namespace DrLab.Desktop
 {
     public partial class App : Application
     {
-        private IHost _host;
-        public static IServiceProvider ServiceProvider { get; private set; }
+        private IHost? _host;
+        public static IServiceProvider ServiceProvider { get; private set; } = null!;
 
         public App()
         {
@@ -25,29 +25,23 @@ namespace DrLab.Desktop
         {
             var builder = Host.CreateDefaultBuilder();
 
-            // Add configuration with proper path resolution for WinUI 3
+            // Add configuration
             builder.ConfigureAppConfiguration((context, config) =>
             {
-                // Get the application's base directory instead of current directory
-                var appDirectory = AppContext.BaseDirectory;
-
-                // Alternative: Use the directory where the executable is located
-                // var appDirectory = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-
+                // Get the application's directory instead of current directory
+                var appDirectory = AppDomain.CurrentDomain.BaseDirectory;
                 config.SetBasePath(appDirectory);
 
-                // Try to load appsettings.json, but make it optional and provide fallback
+                // Make appsettings.json optional since we provide defaults
                 config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
 
-                // Add in-memory configuration as fallback
-                config.AddInMemoryCollection(new Dictionary<string, string>
+                // Add default configuration
+                var defaultConfig = new Dictionary<string, string?>
                 {
                     ["ApiSettings:BaseUrl"] = "http://localhost:8000",
-                    ["ApiSettings:LoginEndpoint"] = "/api/auth/login/",
-                    ["ApiSettings:Timeout"] = "30",
-                    ["AppSettings:AppName"] = "DrLab LIMS Desktop",
-                    ["AppSettings:Version"] = "1.0.0"
-                });
+                    ["ApiSettings:Timeout"] = "30"
+                };
+                config.AddInMemoryCollection(defaultConfig);
             });
 
             // Add services
@@ -69,13 +63,13 @@ namespace DrLab.Desktop
             if (sessionManager.LoadSavedSession() && sessionManager.IsLoggedIn)
             {
                 // User has a valid saved session, go directly to main window
-                var mainWindow = new Views.MainWindow();
+                var mainWindow = new MainWindow();
                 mainWindow.Activate();
             }
             else
             {
                 // Show login window
-                var loginWindow = new Views.LoginWindow();
+                var loginWindow = new LoginWindow();
                 loginWindow.Activate();
             }
         }

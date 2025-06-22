@@ -7,11 +7,11 @@ namespace DrLab.Desktop.Services
 {
     public class UserSessionManager
     {
-        private static UserSessionManager _instance;
+        private static UserSessionManager? _instance;
         private static readonly object _lock = new object();
 
         // Current session data
-        public LoginResponse CurrentSession { get; private set; }
+        public LoginResponse? CurrentSession { get; private set; }
         public bool IsLoggedIn => CurrentSession != null && !string.IsNullOrEmpty(CurrentSession.tokens?.access);
 
         // Session file path (stored in app data folder)
@@ -32,8 +32,7 @@ namespace DrLab.Desktop.Services
                 {
                     lock (_lock)
                     {
-                        if (_instance == null)
-                            _instance = new UserSessionManager();
+                        _instance ??= new UserSessionManager();
                     }
                 }
                 return _instance;
@@ -98,17 +97,17 @@ namespace DrLab.Desktop.Services
             }
         }
 
-        public string GetAccessToken()
+        public string? GetAccessToken()
         {
             return CurrentSession?.tokens?.access;
         }
 
-        public string GetRefreshToken()
+        public string? GetRefreshToken()
         {
             return CurrentSession?.tokens?.refresh;
         }
 
-        public UserProfile GetCurrentUser()
+        public UserProfile? GetCurrentUser()
         {
             return CurrentSession?.user;
         }
