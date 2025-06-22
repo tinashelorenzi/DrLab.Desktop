@@ -49,6 +49,7 @@ namespace DrLab.Desktop
             {
                 services.AddSingleton<ApiService>();
                 services.AddSingleton(UserSessionManager.Instance);
+                services.AddSingleton(NotificationService.Instance);
             });
 
             _host = builder.Build();

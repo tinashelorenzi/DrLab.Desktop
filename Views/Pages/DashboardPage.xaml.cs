@@ -1,4 +1,5 @@
 using DrLab.Desktop.Services;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using System;
@@ -8,11 +9,13 @@ namespace DrLab.Desktop.Views.Pages
     public sealed partial class DashboardPage : Page
     {
         private readonly UserSessionManager _sessionManager;
+        private readonly NotificationService _notificationService;
 
         public DashboardPage()
         {
             this.InitializeComponent();
             _sessionManager = UserSessionManager.Instance;
+            _notificationService = NotificationService.Instance;
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -43,6 +46,22 @@ namespace DrLab.Desktop.Views.Pages
                 >= 12 and < 17 => "afternoon",
                 _ => "evening"
             };
+        }
+
+        // Test notification handlers - Remove these after testing
+        private void TestSampleBtn_Click(object sender, RoutedEventArgs e)
+        {
+            _notificationService.ShowSampleNotification("WTS-2025-TEST", "Testing Complete", "Sample ready for review");
+        }
+
+        private void TestQCBtn_Click(object sender, RoutedEventArgs e)
+        {
+            _notificationService.ShowQCNotification("BTH-TEST-001", "Control sample out of range", isUrgent: true);
+        }
+
+        private void TestMessageBtn_Click(object sender, RoutedEventArgs e)
+        {
+            _notificationService.ShowMessageNotification("Test User", "This is a test message preview for the notification system", "test_conv");
         }
     }
 }

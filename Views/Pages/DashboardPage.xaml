@@ -252,6 +252,21 @@
             </Border>
 
             <!-- Quick Actions -->
+            <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,12,0,0">
+                <TextBlock Text="Test Notifications:" FontSize="14" Foreground="#B0FFFFFF" VerticalAlignment="Center"/>
+
+                <Button x:Name="TestSampleBtn" Content="Sample Alert" Height="32" CornerRadius="6" Padding="12,0" 
+            Background="#15FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" Foreground="White"
+            Click="TestSampleBtn_Click"/>
+
+                <Button x:Name="TestQCBtn" Content="QC Alert" Height="32" CornerRadius="6" Padding="12,0"
+            Background="#15FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" Foreground="White"
+            Click="TestQCBtn_Click"/>
+
+                <Button x:Name="TestMessageBtn" Content="Message" Height="32" CornerRadius="6" Padding="12,0"
+            Background="#15FFFFFF" BorderBrush="#30FFFFFF" BorderThickness="1" Foreground="White"
+            Click="TestMessageBtn_Click"/>
+            </StackPanel>
             <Border CornerRadius="12" 
                     Background="#15FFFFFF"
                     BorderBrush="#30FFFFFF"

@@ -16,10 +16,14 @@
         <NavigationView x:Name="MainNavigationView"
                         IsBackButtonVisible="Collapsed"
                         IsSettingsVisible="False"
-                        PaneDisplayMode="LeftMinimal"
+                        PaneDisplayMode="LeftCompact"
                         IsPaneToggleButtonVisible="True"
                         SelectionChanged="MainNavigationView_SelectionChanged"
-                        Background="Transparent">
+                        Background="Transparent"
+                        CompactModeThresholdWidth="0"
+                        ExpandedModeThresholdWidth="200"
+                        OpenPaneLength="240"
+                        CompactPaneLength="48">
 
             <!-- Custom Header -->
             <NavigationView.Header>
@@ -140,43 +144,62 @@
 
             <!-- Menu Items -->
             <NavigationView.MenuItems>
-                <NavigationViewItem Icon="Home" Content="Dashboard" Tag="Dashboard"/>
-                <NavigationViewItem Content="Samples" Tag="Samples">
+                <NavigationViewItem Icon="Home" 
+                                    Content="Dashboard" 
+                                    Tag="Dashboard"
+                                    ToolTipService.ToolTip="Dashboard"/>
+                <NavigationViewItem Content="Samples" 
+                                    Tag="Samples"
+                                    ToolTipService.ToolTip="Sample Management">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE82F;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Results Entries" Tag="Results">
+                <NavigationViewItem Content="Results Entries" 
+                                    Tag="Results"
+                                    ToolTipService.ToolTip="Test Results Entry">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE8A5;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Clients" Tag="Clients">
+                <NavigationViewItem Content="Clients" 
+                                    Tag="Clients"
+                                    ToolTipService.ToolTip="Client Management">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE716;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Finance" Tag="Finance">
+                <NavigationViewItem Content="Finance" 
+                                    Tag="Finance"
+                                    ToolTipService.ToolTip="Billing &amp; Finance">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE8C7;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Quality Control" Tag="QualityControl">
+                <NavigationViewItem Content="Quality Control" 
+                                    Tag="QualityControl"
+                                    ToolTipService.ToolTip="Quality Control Testing">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE8EF;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Result Reviews" Tag="Reviews">
+                <NavigationViewItem Content="Result Reviews" 
+                                    Tag="Reviews"
+                                    ToolTipService.ToolTip="Result Validation &amp; Approval">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE8F4;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Reports" Tag="Reports">
+                <NavigationViewItem Content="Reports" 
+                                    Tag="Reports"
+                                    ToolTipService.ToolTip="Report Generation">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE8A3;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="Messaging" Tag="Messaging">
+                <NavigationViewItem Content="Messaging" 
+                                    Tag="Messaging"
+                                    ToolTipService.ToolTip="Secure Lab Communications">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE8BD;"/>
                     </NavigationViewItem.Icon>
@@ -185,7 +208,9 @@
 
             <!-- Footer Menu Items -->
             <NavigationView.FooterMenuItems>
-                <NavigationViewItem Content="Settings" Tag="Settings">
+                <NavigationViewItem Content="Settings" 
+                                    Tag="Settings"
+                                    ToolTipService.ToolTip="System Settings">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="Segoe MDL2 Assets" Glyph="&#xE713;"/>
                     </NavigationViewItem.Icon>

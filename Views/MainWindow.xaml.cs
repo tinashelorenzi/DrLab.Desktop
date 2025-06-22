@@ -21,6 +21,9 @@ namespace DrLab.Desktop.Views
 
             _sessionManager = UserSessionManager.Instance;
 
+            // Set this window as the main window for notifications
+            NotificationService.SetMainWindow(this);
+
             // Initialize page mappings - only include pages we've created
             _pageTypes = new Dictionary<string, Type>
             {
