@@ -279,7 +279,7 @@ namespace DrLab.Desktop.Views
                     await Task.Delay(1000);
 
                     // Open main window
-                    var mainWindow = new MainWindow();
+                    var mainWindow = new Views.MainWindow();
                     mainWindow.Activate();
 
                     // Close login window

@@ -64,7 +64,7 @@ namespace DrLab.Desktop
             if (sessionManager.LoadSavedSession() && sessionManager.IsLoggedIn)
             {
                 // User has a valid saved session, go directly to main window
-                var mainWindow = new MainWindow();
+                var mainWindow = new Views.MainWindow();
                 mainWindow.Activate();
             }
             else
