@@ -67,7 +67,7 @@ namespace DrLab.Desktop.Services
         }
 
         /// <summary>
-        /// Show sample-related notifications
+        /// Show sample related notifications
         /// </summary>
         public void ShowSampleNotification(string sampleId, string status, string message)
         {
@@ -89,7 +89,7 @@ namespace DrLab.Desktop.Services
         }
 
         /// <summary>
-        /// Show messaging notifications (for future messaging system)
+        /// Show messaging notifications for future messaging system
         /// </summary>
         public void ShowMessageNotification(string sender, string preview, string conversationId)
         {
@@ -124,7 +124,7 @@ namespace DrLab.Desktop.Services
         }
 
         /// <summary>
-        /// Core notification method - handles all notification display
+        /// Core notification method that handles all notification display
         /// </summary>
         private void ShowNotification(string title, string message, NotificationType type)
         {
@@ -168,7 +168,7 @@ namespace DrLab.Desktop.Services
         }
 
         /// <summary>
-        /// Configure toast properties (duration, sound, etc.)
+        /// Configure toast properties such as duration and sound
         /// </summary>
         private void ConfigureToastProperties(ToastNotification toast, NotificationType type)
         {
@@ -257,60 +257,14 @@ namespace DrLab.Desktop.Services
         {
             try
             {
-                // Check if notifications are enabled
-                var notifier = ToastNotificationManager.CreateToastNotifier("DrLab.Desktop");
-                var setting = notifier.Setting;
-
-                if (setting == NotificationSetting.Enabled)
-                {
-                    System.Diagnostics.Debug.WriteLine("Notifications are enabled");
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine($"Notifications setting: {setting}");
-                }
+                // Note: For WinUI 3 apps, toast notifications should work by default
+                // If you need explicit permission handling, implement it here
+                System.Diagnostics.Debug.WriteLine("Notification system initialized");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Failed to check notification permissions: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Failed to initialize notifications: {ex.Message}");
             }
-        }
-
-        /// <summary>
-        /// Clear all notifications for the app
-        /// </summary>
-        public void ClearAllNotifications()
-        {
-            try
-            {
-                var history = ToastNotificationManager.History;
-                history.Clear("DrLab.Desktop");
-                System.Diagnostics.Debug.WriteLine("All notifications cleared");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Failed to clear notifications: {ex.Message}");
-            }
-        }
-    }
-}
-namespace LIMS.Services
-{
-    public class NotificationService
-    {
-        public void ShowNotification(string title, string message, Action onClickAction = null)
-        {
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                // For now, use a simple MessageBox
-                // In production, you'd want to use Windows Toast Notifications
-                var result = MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Information);
-
-                if (result == MessageBoxResult.OK && onClickAction != null)
-                {
-                    onClickAction.Invoke();
-                }
-            });
         }
     }
 }

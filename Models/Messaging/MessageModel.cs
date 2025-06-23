@@ -13,13 +13,12 @@ namespace DrLab.Desktop.Models.Messaging
         private string _content = string.Empty;
         private string _encryptedContent = string.Empty;
         private string _messageType = "text";
-        private DateTime _timestamp;
+        private DateTime _timestamp = DateTime.Now;
         private bool _isRead;
-        private bool _isDecrypted;
         private bool _isSentByCurrentUser;
+        private MessageModel? _replyTo;
+        private bool _isDecrypted;
         private string? _replyToId;
-        private MessageModel? _replyToMessage;
-        private bool _showSenderName;
 
         public string Id
         {
@@ -40,7 +39,8 @@ namespace DrLab.Desktop.Models.Messaging
             {
                 _senderId = value;
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(IsSentByCurrentUser));
+                // Update IsSentByCurrentUser when SenderId changes
+                IsSentByCurrentUser = _senderId == App.CurrentUserId;
             }
         }
 
@@ -65,13 +65,13 @@ namespace DrLab.Desktop.Models.Messaging
         public string MessageType
         {
             get => _messageType;
-            set { _messageType = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsFileMessage)); }
+            set { _messageType = value; OnPropertyChanged(); }
         }
 
         public DateTime Timestamp
         {
             get => _timestamp;
-            set { _timestamp = value; OnPropertyChanged(); OnPropertyChanged(nameof(TimestampFormatted)); }
+            set { _timestamp = value; OnPropertyChanged(); OnPropertyChanged(nameof(TimeFormatted)); }
         }
 
         public bool IsRead
@@ -80,57 +80,45 @@ namespace DrLab.Desktop.Models.Messaging
             set { _isRead = value; OnPropertyChanged(); }
         }
 
-        public bool IsDecrypted
-        {
-            get => _isDecrypted;
-            set { _isDecrypted = value; OnPropertyChanged(); }
-        }
-
         public bool IsSentByCurrentUser
         {
             get => _isSentByCurrentUser;
             set { _isSentByCurrentUser = value; OnPropertyChanged(); }
         }
 
+        public MessageModel? ReplyTo
+        {
+            get => _replyTo;
+            set { _replyTo = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsReply)); }
+        }
+
         public string? ReplyToId
         {
             get => _replyToId;
-            set { _replyToId = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsReply)); }
+            set { _replyToId = value; OnPropertyChanged(); }
         }
 
-        public MessageModel? ReplyToMessage
+        public bool IsDecrypted
         {
-            get => _replyToMessage;
-            set { _replyToMessage = value; OnPropertyChanged(); }
-        }
-
-        public bool ShowSenderName
-        {
-            get => _showSenderName;
-            set { _showSenderName = value; OnPropertyChanged(); }
+            get => _isDecrypted;
+            set { _isDecrypted = value; OnPropertyChanged(); }
         }
 
         // Computed properties
-        public bool IsReply => !string.IsNullOrEmpty(ReplyToId);
-        public bool IsFileMessage => MessageType == "file";
+        public bool IsReply => ReplyTo != null || !string.IsNullOrEmpty(ReplyToId);
 
-        public string TimestampFormatted
+        public string TimeFormatted
         {
             get
             {
                 var now = DateTime.Now;
                 var diff = now - Timestamp;
 
-                if (diff.TotalMinutes < 1)
-                    return "just now";
-                if (diff.TotalHours < 1)
-                    return $"{(int)diff.TotalMinutes}m ago";
-                if (diff.TotalDays < 1)
-                    return Timestamp.ToString("HH:mm");
-                if (diff.TotalDays < 7)
-                    return Timestamp.ToString("ddd HH:mm");
-
-                return Timestamp.ToString("MMM dd, HH:mm");
+                if (diff.TotalMinutes < 1) return "Now";
+                if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+                if (diff.TotalHours < 24) return Timestamp.ToString("HH:mm");
+                if (diff.TotalDays < 7) return Timestamp.ToString("ddd HH:mm");
+                return Timestamp.ToString("dd/MM/yyyy HH:mm");
             }
         }
 

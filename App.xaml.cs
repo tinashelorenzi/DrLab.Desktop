@@ -21,6 +21,7 @@ namespace DrLab.Desktop
             ConfigureServices();
         }
 
+        public static string CurrentUserId { get; set; } = string.Empty;
         private void ConfigureServices()
         {
             var builder = Host.CreateDefaultBuilder();

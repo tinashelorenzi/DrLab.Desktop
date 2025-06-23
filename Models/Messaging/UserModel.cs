@@ -13,7 +13,7 @@ namespace DrLab.Desktop.Models.Messaging
         private string _lastName = string.Empty;
         private string _department = string.Empty;
         private bool _isOnline;
-        private DateTime _lastSeen;
+        private DateTime? _lastSeen;
         private string _avatarUrl = string.Empty;
 
         public string Id
@@ -25,7 +25,7 @@ namespace DrLab.Desktop.Models.Messaging
         public string Username
         {
             get => _username;
-            set { _username = value; OnPropertyChanged(); }
+            set { _username = value; OnPropertyChanged(); OnPropertyChanged(nameof(DisplayName)); }
         }
 
         public string Email
@@ -58,7 +58,7 @@ namespace DrLab.Desktop.Models.Messaging
             set { _isOnline = value; OnPropertyChanged(); OnPropertyChanged(nameof(StatusText)); }
         }
 
-        public DateTime LastSeen
+        public DateTime? LastSeen
         {
             get => _lastSeen;
             set { _lastSeen = value; OnPropertyChanged(); OnPropertyChanged(nameof(StatusText)); }
@@ -76,7 +76,9 @@ namespace DrLab.Desktop.Models.Messaging
             get
             {
                 if (!string.IsNullOrEmpty(FirstName) || !string.IsNullOrEmpty(LastName))
+                {
                     return $"{FirstName} {LastName}".Trim();
+                }
                 return Username;
             }
         }
@@ -85,37 +87,16 @@ namespace DrLab.Desktop.Models.Messaging
         {
             get
             {
-                if (IsOnline)
-                    return "Online";
-
-                var diff = DateTime.Now - LastSeen;
-                if (diff.TotalMinutes < 5)
-                    return "Just now";
-                if (diff.TotalHours < 1)
-                    return $"{(int)diff.TotalMinutes}m ago";
-                if (diff.TotalDays < 1)
-                    return $"{(int)diff.TotalHours}h ago";
-                if (diff.TotalDays < 7)
+                if (IsOnline) return "Online";
+                if (LastSeen.HasValue)
+                {
+                    var diff = DateTime.Now - LastSeen.Value;
+                    if (diff.TotalMinutes < 5) return "Just now";
+                    if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+                    if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
                     return $"{(int)diff.TotalDays}d ago";
-
-                return LastSeen.ToString("MMM dd");
-            }
-        }
-
-        public string Initials
-        {
-            get
-            {
-                var initials = "";
-                if (!string.IsNullOrEmpty(FirstName))
-                    initials += FirstName[0];
-                if (!string.IsNullOrEmpty(LastName))
-                    initials += LastName[0];
-
-                if (string.IsNullOrEmpty(initials) && !string.IsNullOrEmpty(Username))
-                    initials = Username.Substring(0, Math.Min(2, Username.Length));
-
-                return initials.ToUpper();
+                }
+                return "Offline";
             }
         }
 
