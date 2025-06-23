@@ -1,116 +1,19 @@
-﻿// Views/MessagingPage.xaml
-< !--
-< Page x: Class = "LIMS.Views.MessagingPage"
-      xmlns = "http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-      xmlns: x = "http://schemas.microsoft.com/winfx/2006/xaml"
-      xmlns: mc = "http://schemas.openxmlformats.org/markup-compatibility/2006"
-      xmlns: d = "http://schemas.microsoft.com/expression/blend/2008"
-      xmlns: messaging = "clr-namespace:LIMS.Views.Messaging"
-      mc: Ignorable = "d"
-      d: DesignHeight = "600" d: DesignWidth = "1000"
-      Title = "Messaging" >
-
-    < Grid Background = "#F5F5F5" >
-        < Grid.ColumnDefinitions >
-            < ColumnDefinition Width = "320" MinWidth = "250" />
-            < ColumnDefinition Width = "*" />
-        </ Grid.ColumnDefinitions >
-
-        < !--Conversations Panel-- >
-        < Border Grid.Column = "0"
-                Background = "White"
-                BorderBrush = "#E0E0E0"
-                BorderThickness = "0,0,1,0" >
-            < messaging:ConversationListPanel x:Name = "ConversationListPanel" />
-        </ Border >
-
-        < !--Messages Panel-- >
-        < Grid Grid.Column = "1" >
-            < messaging:MessageView x:Name = "MessageView" />
-        </ Grid >
-
-        < !--Splitter-- >
-        < GridSplitter Grid.Column = "0"
-                      Width = "1"
-                      HorizontalAlignment = "Right"
-                      Background = "#E0E0E0"
-                      BorderThickness = "0" />
-    </ Grid >
-</ Page >
--->
-
-// Views/MessagingPage.xaml.cs
-using System;
-using System.Windows;
-using System.Windows.Controls;
-using LIMS.ViewModels;
-
-namespace LIMS.Views
-{
-    public partial class MessagingPage : Page
-    {
-        public MessagingViewModel ViewModel { get; private set; }
-
-        public MessagingPage()
-        {
-            InitializeComponent();
-            ViewModel = new MessagingViewModel();
-            DataContext = ViewModel;
-
-            // Wire up events
-            ConversationListPanel.ConversationSelected += OnConversationSelected;
-            MessageView.MessageSent += OnMessageSent;
-
-            Loaded += MessagingPage_Loaded;
-            Unloaded += MessagingPage_Unloaded;
-        }
-
-        private async void MessagingPage_Loaded(object sender, RoutedEventArgs e)
-        {
-            await ViewModel.InitializeAsync();
-        }
-
-        private async void MessagingPage_Unloaded(object sender, RoutedEventArgs e)
-        {
-            await ViewModel.CleanupAsync();
-        }
-
-        private void OnConversationSelected(object sender, ConversationSelectedEventArgs e)
-        {
-            ViewModel.SelectConversation(e.ConversationId);
-        }
-
-        private void OnMessageSent(object sender, MessageSentEventArgs e)
-        {
-            ViewModel.SendMessage(e.Content, e.MessageType);
-        }
-    }
-
-    // Event Args
-    public class ConversationSelectedEventArgs : EventArgs
-    {
-        public string ConversationId { get; set; }
-    }
-
-    public class MessageSentEventArgs : EventArgs
-    {
-        public string Content { get; set; }
-        public string MessageType { get; set; } = "text";
-    }
-}
-
-// ViewModels/MessagingViewModel.cs
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Threading.Tasks;
-using System.Windows;
+using DrLab.Desktop.Models;
+using DrLab.Desktop.Models.Messaging;
+using DrLab.Desktop.Services;
 using LIMS.Models.Messaging;
 using LIMS.Services;
+using Microsoft.UI.Dispatching;
 
-namespace LIMS.ViewModels
+namespace DrLab.Desktop.ViewModels
 {
     public class MessagingViewModel : INotifyPropertyChanged, IDisposable
     {
@@ -118,15 +21,18 @@ namespace LIMS.ViewModels
         private readonly NotificationService _notificationService;
         private readonly ApiService _apiService;
         private readonly EncryptionService _encryptionService;
-        private ConversationModel _activeConversation;
+        private readonly DispatcherQueue _dispatcher;
+        private ConversationModel? _activeConversation;
         private bool _isConnected;
         private bool _isCurrentPageActive = true;
         private bool _isInitialized = false;
+        private string _searchQuery = string.Empty;
 
         public ObservableCollection<ConversationModel> Conversations { get; }
         public ObservableCollection<MessageModel> Messages { get; }
+        public ObservableCollection<UserModel> TypingUsers { get; }
 
-        public ConversationModel ActiveConversation
+        public ConversationModel? ActiveConversation
         {
             get => _activeConversation;
             set
@@ -143,7 +49,7 @@ namespace LIMS.ViewModels
 
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(HasActiveConversation));
-                    await LoadConversationMessagesAsync();
+                    _ = LoadConversationMessagesAsync();
                 }
             }
         }
@@ -158,24 +64,43 @@ namespace LIMS.ViewModels
             }
         }
 
+        public string SearchQuery
+        {
+            get => _searchQuery;
+            set
+            {
+                _searchQuery = value;
+                OnPropertyChanged();
+                _ = FilterConversationsAsync();
+            }
+        }
+
         public bool HasActiveConversation => ActiveConversation != null;
         public bool HasConversations => Conversations.Count > 0;
 
-        public MessagingViewModel()
+        public MessagingViewModel(
+            MessagingWebSocketService webSocketService,
+            NotificationService notificationService,
+            ApiService apiService,
+            EncryptionService encryptionService)
         {
+            _webSocketService = webSocketService;
+            _notificationService = notificationService;
+            _apiService = apiService;
+            _encryptionService = encryptionService;
+            _dispatcher = DispatcherQueue.GetForCurrentThread();
+
             Conversations = new ObservableCollection<ConversationModel>();
             Messages = new ObservableCollection<MessageModel>();
-
-            _webSocketService = new MessagingWebSocketService("ws://localhost:8000");
-            _notificationService = new NotificationService();
-            _apiService = new ApiService("http://localhost:8000");
-            _encryptionService = new EncryptionService(_apiService);
+            TypingUsers = new ObservableCollection<UserModel>();
 
             // Subscribe to WebSocket events
             _webSocketService.ConnectionStatusChanged += OnConnectionStatusChanged;
             _webSocketService.MessageReceived += OnMessageReceived;
             _webSocketService.ConversationUpdated += OnConversationUpdated;
             _webSocketService.NotificationReceived += OnNotificationReceived;
+            _webSocketService.ReadStatusUpdated += OnReadStatusUpdated;
+            _webSocketService.TypingIndicatorReceived += OnTypingIndicatorReceived;
         }
 
         public async Task InitializeAsync()
@@ -184,110 +109,38 @@ namespace LIMS.ViewModels
 
             try
             {
-                // Authenticate user
-                var authResult = await _apiService.LoginAsync(
-                    App.CurrentUserName, // You'll need to get this from your auth system
-                    "user-password"     // You'll need to get this from your auth system
-                );
-
-                if (authResult == null)
+                // Get auth token from user session or login
+                var authToken = UserSessionManager.Instance.AccessToken;
+                if (string.IsNullOrEmpty(authToken))
                 {
-                    throw new Exception("Authentication failed");
+                    throw new Exception("No authentication token available");
                 }
 
-                // Update app context
-                App.CurrentUserId = authResult.User.Id;
-                App.CurrentUserName = authResult.User.Username;
-                App.CurrentUserEmail = authResult.User.Email;
-
-                // Initialize encryption
-                await _encryptionService.InitializeUserKeysAsync(App.CurrentUserId, "user-password");
-
                 // Connect to WebSocket
-                await _webSocketService.ConnectAsync(authResult.Access);
+                await _webSocketService.ConnectAsync(authToken);
 
-                // Load conversations
+                // Load initial data
                 await LoadConversationsAsync();
 
-                _isCurrentPageActive = true;
                 _isInitialized = true;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to initialize messaging: {ex.Message}", "Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"Error initializing messaging: {ex.Message}");
+                throw;
             }
         }
 
         public async Task CleanupAsync()
         {
-            _isCurrentPageActive = false;
-            await _webSocketService.DisconnectAsync();
-        }
-
-        public async void SelectConversation(string conversationId)
-        {
-            var conversation = Conversations.FirstOrDefault(c => c.Id == conversationId);
-            if (conversation != null)
-            {
-                ActiveConversation = conversation;
-
-                // Mark all messages as read
-                foreach (var message in Messages.Where(m => !m.IsRead && !m.IsSentByCurrentUser))
-                {
-                    message.IsRead = true;
-                    _ = _webSocketService.MarkAsReadAsync(message.Id);
-                }
-
-                // Reset unread count
-                conversation.UnreadCount = 0;
-            }
-        }
-
-        public async void SendMessage(string content, string messageType = "text")
-        {
-            if (ActiveConversation == null || string.IsNullOrWhiteSpace(content))
-                return;
-
             try
             {
-                // Create temporary message for immediate UI update
-                var tempMessage = new MessageModel
-                {
-                    Id = Guid.NewGuid().ToString(),
-                    ConversationId = ActiveConversation.Id,
-                    SenderId = App.CurrentUserId,
-                    SenderName = App.CurrentUserName,
-                    Content = content,
-                    MessageType = messageType,
-                    Timestamp = DateTime.Now,
-                    IsSentByCurrentUser = true,
-                    IsDecrypted = true
-                };
-
-                // Add to UI immediately
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    Messages.Add(tempMessage);
-                });
-
-                // Encrypt content
-                var encryptedContent = await _encryptionService.EncryptMessageAsync(content, ActiveConversation.Id);
-
-                // Send via WebSocket and API
-                await _webSocketService.SendMessageAsync(ActiveConversation.Id, encryptedContent, messageType);
-
-                // Update conversation preview
-                ActiveConversation.LastMessagePreview = content;
-                ActiveConversation.LastMessageTime = DateTime.Now;
-
-                // Move conversation to top
-                MoveConversationToTop(ActiveConversation);
+                await _webSocketService.DisconnectAsync();
+                _isInitialized = false;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to send message: {ex.Message}", "Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"Error during cleanup: {ex.Message}");
             }
         }
 
@@ -296,21 +149,77 @@ namespace LIMS.ViewModels
             _isCurrentPageActive = isActive;
         }
 
+        public async Task SelectConversation(string conversationId)
+        {
+            try
+            {
+                var conversation = Conversations.FirstOrDefault(c => c.Id == conversationId);
+                if (conversation != null)
+                {
+                    ActiveConversation = conversation;
+
+                    // Join the conversation for real-time updates
+                    if (_webSocketService.IsConnected)
+                    {
+                        await _webSocketService.JoinConversationAsync(conversationId);
+                    }
+
+                    // Mark messages as read
+                    await MarkConversationAsReadAsync(conversationId);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error selecting conversation: {ex.Message}");
+            }
+        }
+
+        public async Task SendMessage(string content, string messageType = "text", string? replyToId = null)
+        {
+            if (ActiveConversation == null || string.IsNullOrWhiteSpace(content)) return;
+
+            try
+            {
+                // Encrypt message content
+                var encryptedContent = await _encryptionService.EncryptMessageAsync(content, ActiveConversation.Id);
+
+                // Send via WebSocket
+                await _webSocketService.SendMessageAsync(ActiveConversation.Id, encryptedContent, messageType, replyToId);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error sending message: {ex.Message}");
+                // You could show an error notification here
+            }
+        }
+
+        public async Task SendTypingIndicator(bool isTyping)
+        {
+            if (ActiveConversation == null) return;
+
+            try
+            {
+                await _webSocketService.SendTypingIndicatorAsync(ActiveConversation.Id, isTyping);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error sending typing indicator: {ex.Message}");
+            }
+        }
+
         private async Task LoadConversationsAsync()
         {
             try
             {
                 var conversations = await _apiService.GetConversationsAsync();
 
-                Application.Current.Dispatcher.Invoke(() =>
+                _dispatcher.TryEnqueue(() =>
                 {
                     Conversations.Clear();
-
                     foreach (var conversation in conversations)
                     {
-                        Conversations.Add(conversation);
+                        Conversations.Add(ConvertToConversationModel(conversation));
                     }
-
                     OnPropertyChanged(nameof(HasConversations));
                 });
             }
@@ -328,13 +237,14 @@ namespace LIMS.ViewModels
             {
                 var messages = await _apiService.GetMessagesAsync(ActiveConversation.Id);
 
-                Application.Current.Dispatcher.Invoke(() =>
+                _dispatcher.TryEnqueue(() =>
                 {
                     Messages.Clear();
-
                     foreach (var message in messages)
                     {
-                        Messages.Add(message);
+                        var messageModel = ConvertToMessageModel(message);
+                        messageModel.IsSentByCurrentUser = message.SenderId == UserSessionManager.Instance.UserId;
+                        Messages.Add(messageModel);
                     }
                 });
 
@@ -358,7 +268,7 @@ namespace LIMS.ViewModels
                         message.ConversationId
                     );
 
-                    Application.Current.Dispatcher.Invoke(() =>
+                    _dispatcher.TryEnqueue(() =>
                     {
                         message.Content = decryptedContent;
                         message.IsDecrypted = true;
@@ -367,7 +277,7 @@ namespace LIMS.ViewModels
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"Failed to decrypt message {message.Id}: {ex.Message}");
-                    Application.Current.Dispatcher.Invoke(() =>
+                    _dispatcher.TryEnqueue(() =>
                     {
                         message.Content = "Failed to decrypt message";
                         message.IsDecrypted = true;
@@ -376,9 +286,61 @@ namespace LIMS.ViewModels
             }
         }
 
+        private async Task MarkConversationAsReadAsync(string conversationId)
+        {
+            try
+            {
+                var unreadMessages = Messages.Where(m => !m.IsRead && !m.IsSentByCurrentUser);
+                foreach (var message in unreadMessages)
+                {
+                    await _apiService.MarkMessageAsReadAsync(message.Id);
+                    message.IsRead = true;
+                }
+
+                // Update conversation unread count
+                var conversation = Conversations.FirstOrDefault(c => c.Id == conversationId);
+                if (conversation != null)
+                {
+                    conversation.UnreadCount = 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error marking conversation as read: {ex.Message}");
+            }
+        }
+
+        private async Task FilterConversationsAsync()
+        {
+            // Simple client-side filtering for now
+            // In a production app, you might want to implement server-side search
+            if (string.IsNullOrWhiteSpace(SearchQuery))
+            {
+                await LoadConversationsAsync();
+                return;
+            }
+
+            var query = SearchQuery.ToLower();
+            var filtered = Conversations.Where(c =>
+                c.Name.ToLower().Contains(query) ||
+                c.LastMessagePreview.ToLower().Contains(query) ||
+                c.Participants.Any(p => p.DisplayName.ToLower().Contains(query))
+            ).ToList();
+
+            _dispatcher.TryEnqueue(() =>
+            {
+                Conversations.Clear();
+                foreach (var conversation in filtered)
+                {
+                    Conversations.Add(conversation);
+                }
+            });
+        }
+
+        // Event handlers
         private void OnConnectionStatusChanged(ConnectionStatusEventArgs e)
         {
-            Application.Current.Dispatcher.Invoke(() =>
+            _dispatcher.TryEnqueue(() =>
             {
                 IsConnected = e.IsConnected;
             });
@@ -401,41 +363,33 @@ namespace LIMS.ViewModels
                     EncryptedContent = e.EncryptedContent,
                     MessageType = e.MessageType,
                     Timestamp = e.Timestamp,
-                    IsSentByCurrentUser = e.SenderId == App.CurrentUserId,
-                    IsDecrypted = true
+                    ReplyToId = e.ReplyToId,
+                    IsDecrypted = true,
+                    IsSentByCurrentUser = e.SenderId == UserSessionManager.Instance.UserId
                 };
 
-                Application.Current.Dispatcher.Invoke(() =>
+                _dispatcher.TryEnqueue(() =>
                 {
-                    // Add message to active conversation if it matches
+                    // Add to messages if this is the active conversation
                     if (ActiveConversation?.Id == e.ConversationId)
                     {
                         Messages.Add(message);
-
-                        // Auto-mark as read if user is on this conversation
-                        if (!message.IsSentByCurrentUser)
-                        {
-                            message.IsRead = true;
-                            _ = _webSocketService.MarkAsReadAsync(message.Id);
-                        }
-                    }
-                    else
-                    {
-                        // Update unread count for other conversations
-                        var conversation = Conversations.FirstOrDefault(c => c.Id == e.ConversationId);
-                        if (conversation != null && !message.IsSentByCurrentUser)
-                        {
-                            conversation.UnreadCount++;
-                        }
                     }
 
                     // Update conversation preview
-                    var conv = Conversations.FirstOrDefault(c => c.Id == e.ConversationId);
-                    if (conv != null)
+                    var conversation = Conversations.FirstOrDefault(c => c.Id == e.ConversationId);
+                    if (conversation != null)
                     {
-                        conv.LastMessagePreview = decryptedContent;
-                        conv.LastMessageTime = e.Timestamp;
-                        MoveConversationToTop(conv);
+                        conversation.LastMessagePreview = decryptedContent;
+                        conversation.LastMessageTime = e.Timestamp;
+
+                        if (!message.IsSentByCurrentUser)
+                        {
+                            conversation.UnreadCount++;
+                        }
+
+                        // Move conversation to top
+                        MoveConversationToTop(conversation);
                     }
                 });
             }
@@ -445,10 +399,9 @@ namespace LIMS.ViewModels
             }
         }
 
-        private void OnConversationUpdated(ConversationUpdateEventArgs e)
+        private async void OnConversationUpdated(ConversationUpdateEventArgs e)
         {
-            // Handle conversation updates (new participants, name changes, etc.)
-            Application.Current.Dispatcher.Invoke(async () =>
+            _dispatcher.TryEnqueue(async () =>
             {
                 var conversation = Conversations.FirstOrDefault(c => c.Id == e.ConversationId);
                 if (conversation != null)
@@ -464,18 +417,61 @@ namespace LIMS.ViewModels
             // Only show notifications if user is not on the messaging page or not viewing this conversation
             if (!_isCurrentPageActive || ActiveConversation?.Id != e.ConversationId)
             {
-                _notificationService.ShowNotification(
+                _notificationService.ShowMessageNotification(
                     e.ConversationName,
-                    $"{e.SenderName}: {e.MessagePreview}",
+                    e.SenderName,
+                    e.MessagePreview,
                     () => {
                         // Navigate to conversation when notification is clicked
-                        Application.Current.Dispatcher.Invoke(() =>
+                        _dispatcher.TryEnqueue(async () =>
                         {
-                            SelectConversation(e.ConversationId);
+                            await SelectConversation(e.ConversationId);
                         });
                     }
                 );
             }
+        }
+
+        private void OnReadStatusUpdated(ReadStatusUpdateEventArgs e)
+        {
+            _dispatcher.TryEnqueue(() =>
+            {
+                var message = Messages.FirstOrDefault(m => m.Id == e.MessageId);
+                if (message != null)
+                {
+                    message.IsRead = true;
+                }
+            });
+        }
+
+        private void OnTypingIndicatorReceived(TypingIndicatorEventArgs e)
+        {
+            if (ActiveConversation?.Id != e.ConversationId) return;
+
+            _dispatcher.TryEnqueue(() =>
+            {
+                var user = TypingUsers.FirstOrDefault(u => u.Id == e.UserId);
+
+                if (e.IsTyping)
+                {
+                    if (user == null)
+                    {
+                        TypingUsers.Add(new UserModel
+                        {
+                            Id = e.UserId,
+                            Username = e.UserName,
+                            DisplayName = e.UserName
+                        });
+                    }
+                }
+                else
+                {
+                    if (user != null)
+                    {
+                        TypingUsers.Remove(user);
+                    }
+                }
+            });
         }
 
         private void MoveConversationToTop(ConversationModel conversation)
@@ -487,8 +483,66 @@ namespace LIMS.ViewModels
             }
         }
 
+        // Helper methods
+        private ConversationModel ConvertToConversationModel(ConversationDto dto)
+        {
+            var model = new ConversationModel
+            {
+                Id = dto.Id,
+                Name = dto.Name,
+                ConversationType = dto.ConversationType,
+                LastMessageTime = dto.LastMessageTime,
+                LastMessagePreview = dto.LastMessagePreview,
+                UnreadCount = dto.UnreadCount
+            };
+
+            foreach (var participant in dto.Participants)
+            {
+                model.Participants.Add(ConvertToUserModel(participant));
+            }
+
+            if (dto.LastMessage != null)
+            {
+                model.LastMessage = ConvertToMessageModel(dto.LastMessage);
+            }
+
+            return model;
+        }
+
+        private MessageModel ConvertToMessageModel(MessageDto dto)
+        {
+            return new MessageModel
+            {
+                Id = dto.Id,
+                ConversationId = dto.ConversationId,
+                SenderId = dto.SenderId,
+                SenderName = dto.SenderName,
+                EncryptedContent = dto.EncryptedContent,
+                MessageType = dto.MessageType,
+                Timestamp = dto.Timestamp,
+                IsRead = dto.IsRead,
+                ReplyToId = dto.ReplyToId
+            };
+        }
+
+        private UserModel ConvertToUserModel(UserDto dto)
+        {
+            return new UserModel
+            {
+                Id = dto.Id,
+                Username = dto.Username,
+                Email = dto.Email,
+                FirstName = dto.FirstName,
+                LastName = dto.LastName,
+                Department = dto.Department,
+                IsOnline = dto.IsOnline,
+                LastSeen = dto.LastSeen,
+                AvatarUrl = dto.AvatarUrl
+            };
+        }
+
         // Additional methods for conversation management
-        public async Task<ConversationModel> CreateConversationAsync(List<string> participantIds, string name = null)
+        public async Task<ConversationModel?> CreateConversationAsync(List<string> participantIds, string? name = null)
         {
             try
             {
@@ -497,19 +551,20 @@ namespace LIMS.ViewModels
 
                 if (conversation != null)
                 {
-                    Application.Current.Dispatcher.Invoke(() =>
+                    var conversationModel = ConvertToConversationModel(conversation);
+                    _dispatcher.TryEnqueue(() =>
                     {
-                        Conversations.Insert(0, conversation);
+                        Conversations.Insert(0, conversationModel);
                         OnPropertyChanged(nameof(HasConversations));
                     });
+                    return conversationModel;
                 }
 
-                return conversation;
+                return null;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to create conversation: {ex.Message}", "Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"Failed to create conversation: {ex.Message}");
                 return null;
             }
         }
@@ -518,7 +573,8 @@ namespace LIMS.ViewModels
         {
             try
             {
-                return await _apiService.SearchUsersAsync(query);
+                var users = await _apiService.SearchUsersAsync(query);
+                return users.ConvertAll(ConvertToUserModel);
             }
             catch (Exception ex)
             {
@@ -541,17 +597,17 @@ namespace LIMS.ViewModels
                 if (uploadResult != null)
                 {
                     // Create file message
-                    var fileContent = $"📎 {fileName}";
+                    var fileContent = JsonSerializer.Serialize(new
+                    {
+                        type = "file",
+                        fileName = fileName,
+                        fileId = uploadResult.FileId,
+                        fileSize = uploadResult.FileSize
+                    });
 
                     // Encrypt file info
                     var encryptedContent = await _encryptionService.EncryptMessageAsync(
-                        JsonSerializer.Serialize(new
-                        {
-                            type = "file",
-                            fileName = fileName,
-                            fileId = uploadResult.FileId,
-                            fileSize = uploadResult.FileSize
-                        }),
+                        fileContent,
                         ActiveConversation.Id
                     );
 
@@ -561,14 +617,15 @@ namespace LIMS.ViewModels
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to send file: {ex.Message}", "Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"Failed to send file: {ex.Message}");
+                // Show error notification
+                _notificationService.ShowNotification("Error", $"Failed to send file: {ex.Message}", NotificationService.NotificationType.Error);
             }
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
@@ -578,7 +635,6 @@ namespace LIMS.ViewModels
             _webSocketService?.Dispose();
             _apiService?.Dispose();
             _encryptionService?.Dispose();
-            _notificationService?.Dispose();
         }
     }
 }
