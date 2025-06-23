@@ -1,5 +1,4 @@
 using System;
-using System.Net.Http;
 using System.Threading.Tasks;
 using DrLab.Desktop.Services;
 using DrLab.Desktop.Views;
@@ -7,9 +6,9 @@ using Microsoft.UI;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media.Animation;
-using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using WinRT.Interop;
 using Windows.UI;
 
@@ -18,6 +17,8 @@ namespace DrLab.Desktop.Views
     public sealed partial class LoginWindow : Window
     {
         private readonly ApiService _apiService;
+        private readonly UserSessionManager _sessionManager;
+        private readonly NotificationService _notificationService;
         private bool _isLoggingIn = false;
 
         public LoginWindow()
@@ -25,8 +26,10 @@ namespace DrLab.Desktop.Views
             this.InitializeComponent();
             this.Title = "DrLab LIMS - Login";
 
-            // Get API service from dependency injection
+            // Get services from dependency injection
             _apiService = (ApiService)App.ServiceProvider.GetService(typeof(ApiService))!;
+            _sessionManager = UserSessionManager.Instance;
+            _notificationService = NotificationService.Instance;
 
             // Configure window
             ConfigureWindow();
@@ -34,29 +37,41 @@ namespace DrLab.Desktop.Views
             // Start entrance animations
             this.Activated += LoginWindow_Activated;
 
-            // Handle Enter key for login using PreviewKeyDown on the content
-            this.Content.PreviewKeyDown += LoginWindow_PreviewKeyDown;
+            // Handle Enter key for login
+            this.Content.KeyDown += LoginWindow_KeyDown;
+
+            // Focus username box when loaded
+            this.Loaded += (s, e) => UsernameTextBox.Focus(FocusState.Programmatic);
+
+            // Check connection status
+            CheckConnectionStatus();
         }
 
         private void ConfigureWindow()
         {
-            // Get the window handle and maximize
-            var hWnd = WindowNative.GetWindowHandle(this);
-            var windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
-            var appWindow = AppWindow.GetFromWindowId(windowId);
-
-            if (appWindow.Presenter is OverlappedPresenter presenter)
+            try
             {
-                presenter.Maximize();
-            }
+                // Get the window handle
+                var hWnd = WindowNative.GetWindowHandle(this);
+                var windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
+                var appWindow = AppWindow.GetFromWindowId(windowId);
 
-            // Center the window if not maximized
-            if (appWindow.Size.Width < 1920)
-            {
+                // Set window size and center it
                 var displayArea = DisplayArea.GetFromWindowId(windowId, DisplayAreaFallback.Primary);
                 var centerX = (displayArea.WorkArea.Width - 1200) / 2;
                 var centerY = (displayArea.WorkArea.Height - 800) / 2;
                 appWindow.MoveAndResize(new Windows.Graphics.RectInt32(centerX, centerY, 1200, 800));
+
+                // Set window properties
+                if (appWindow.Presenter is OverlappedPresenter presenter)
+                {
+                    presenter.IsResizable = false;
+                    presenter.IsMaximizable = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to configure window: {ex.Message}");
             }
         }
 
@@ -69,7 +84,7 @@ namespace DrLab.Desktop.Views
             }
         }
 
-        private void LoginWindow_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+        private void LoginWindow_KeyDown(object sender, KeyRoutedEventArgs e)
         {
             if (e.Key == Windows.System.VirtualKey.Enter && !_isLoggingIn)
             {
@@ -80,154 +95,75 @@ namespace DrLab.Desktop.Views
 
         private void StartEntranceAnimations()
         {
-            // Animate login container entrance
-            var containerTransform = new CompositeTransform
+            try
             {
-                TranslateY = 30,
-                ScaleX = 0.95,
-                ScaleY = 0.95
-            };
-            LoginContainer.RenderTransform = containerTransform;
-            LoginContainer.Opacity = 0;
-
-            var storyboard = new Storyboard();
-
-            // Fade in animation
-            var fadeIn = new DoubleAnimation
-            {
-                From = 0,
-                To = 1,
-                Duration = TimeSpan.FromMilliseconds(600),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
-            Storyboard.SetTarget(fadeIn, LoginContainer);
-            Storyboard.SetTargetProperty(fadeIn, "Opacity");
-
-            // Slide up animation
-            var slideUp = new DoubleAnimation
-            {
-                From = 30,
-                To = 0,
-                Duration = TimeSpan.FromMilliseconds(600),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
-            Storyboard.SetTarget(slideUp, containerTransform);
-            Storyboard.SetTargetProperty(slideUp, "TranslateY");
-
-            // Scale animation
-            var scaleX = new DoubleAnimation
-            {
-                From = 0.95,
-                To = 1,
-                Duration = TimeSpan.FromMilliseconds(600),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
-            Storyboard.SetTarget(scaleX, containerTransform);
-            Storyboard.SetTargetProperty(scaleX, "ScaleX");
-
-            var scaleY = new DoubleAnimation
-            {
-                From = 0.95,
-                To = 1,
-                Duration = TimeSpan.FromMilliseconds(600),
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
-            Storyboard.SetTarget(scaleY, containerTransform);
-            Storyboard.SetTargetProperty(scaleY, "ScaleY");
-
-            storyboard.Children.Add(fadeIn);
-            storyboard.Children.Add(slideUp);
-            storyboard.Children.Add(scaleX);
-            storyboard.Children.Add(scaleY);
-
-            storyboard.Begin();
-
-            // Animate logo with subtle breathing effect
-            StartLogoAnimation();
-
-            // Start subtle particle floating animation
-            StartParticleAnimation();
-
-            // Focus username field after animation
-            storyboard.Completed += (s, e) => UsernameTextBox.Focus(FocusState.Programmatic);
-        }
-
-        private void StartLogoAnimation()
-        {
-            var logoTransform = new CompositeTransform();
-            LogoIcon.RenderTransform = logoTransform;
-
-            var breatheStoryboard = new Storyboard
-            {
-                RepeatBehavior = RepeatBehavior.Forever
-            };
-
-            var breatheAnimation = new DoubleAnimation
-            {
-                From = 1.0,
-                To = 1.05,
-                Duration = TimeSpan.FromSeconds(3),
-                EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
-                AutoReverse = true
-            };
-
-            Storyboard.SetTarget(breatheAnimation, logoTransform);
-            Storyboard.SetTargetProperty(breatheAnimation, "ScaleX");
-
-            var breatheAnimationY = new DoubleAnimation
-            {
-                From = 1.0,
-                To = 1.05,
-                Duration = TimeSpan.FromSeconds(3),
-                EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
-                AutoReverse = true
-            };
-
-            Storyboard.SetTarget(breatheAnimationY, logoTransform);
-            Storyboard.SetTargetProperty(breatheAnimationY, "ScaleY");
-
-            breatheStoryboard.Children.Add(breatheAnimation);
-            breatheStoryboard.Children.Add(breatheAnimationY);
-            breatheStoryboard.Begin();
-        }
-
-        private async void StartParticleAnimation()
-        {
-            var random = new Random();
-
-            while (true)
-            {
-                await Task.Delay(2000); // Update every 2 seconds for subtle movement
-
-                try
+                // Animate login container entrance
+                var containerTransform = new CompositeTransform
                 {
-                    this.DispatcherQueue.TryEnqueue(() =>
-                    {
-                        foreach (var child in ParticlesCanvas.Children)
-                        {
-                            if (child is FrameworkElement element)
-                            {
-                                var currentX = Canvas.GetLeft(element);
-                                var currentY = Canvas.GetTop(element);
+                    TranslateY = 50,
+                    ScaleX = 0.95,
+                    ScaleY = 0.95
+                };
+                LoginContainer.RenderTransform = containerTransform;
+                LoginContainer.Opacity = 0;
 
-                                var newX = currentX + (random.NextDouble() * 20 - 10); // -10 to 10
-                                var newY = currentY + (random.NextDouble() * 20 - 10); // -10 to 10
+                // Create animation
+                var storyboard = new Storyboard();
 
-                                // Keep within reasonable bounds
-                                newX = Math.Max(0, Math.Min(newX, 1000));
-                                newY = Math.Max(0, Math.Min(newY, 700));
-
-                                Canvas.SetLeft(element, newX);
-                                Canvas.SetTop(element, newY);
-                            }
-                        }
-                    });
-                }
-                catch
+                // Opacity animation
+                var opacityAnimation = new DoubleAnimation
                 {
-                    // Window might be closed, exit the loop
-                    break;
-                }
+                    From = 0,
+                    To = 1,
+                    Duration = TimeSpan.FromMilliseconds(600),
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                };
+                Storyboard.SetTarget(opacityAnimation, LoginContainer);
+                Storyboard.SetTargetProperty(opacityAnimation, "Opacity");
+
+                // Transform animation
+                var translateAnimation = new DoubleAnimation
+                {
+                    From = 50,
+                    To = 0,
+                    Duration = TimeSpan.FromMilliseconds(800),
+                    EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.3 }
+                };
+                Storyboard.SetTarget(translateAnimation, containerTransform);
+                Storyboard.SetTargetProperty(translateAnimation, "TranslateY");
+
+                var scaleXAnimation = new DoubleAnimation
+                {
+                    From = 0.95,
+                    To = 1,
+                    Duration = TimeSpan.FromMilliseconds(800),
+                    EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.3 }
+                };
+                Storyboard.SetTarget(scaleXAnimation, containerTransform);
+                Storyboard.SetTargetProperty(scaleXAnimation, "ScaleX");
+
+                var scaleYAnimation = new DoubleAnimation
+                {
+                    From = 0.95,
+                    To = 1,
+                    Duration = TimeSpan.FromMilliseconds(800),
+                    EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.3 }
+                };
+                Storyboard.SetTarget(scaleYAnimation, containerTransform);
+                Storyboard.SetTargetProperty(scaleYAnimation, "ScaleY");
+
+                storyboard.Children.Add(opacityAnimation);
+                storyboard.Children.Add(translateAnimation);
+                storyboard.Children.Add(scaleXAnimation);
+                storyboard.Children.Add(scaleYAnimation);
+
+                storyboard.Begin();
+            }
+            catch (Exception ex)
+            {
+                // If animations fail, just show the container
+                LoginContainer.Opacity = 1;
+                System.Diagnostics.Debug.WriteLine($"Animation failed: {ex.Message}");
             }
         }
 
@@ -240,163 +176,91 @@ namespace DrLab.Desktop.Views
         {
             if (_isLoggingIn) return;
 
-            // Hide any previous error messages
-            HideError();
+            var username = UsernameTextBox.Text.Trim();
+            var password = PasswordBox.Password;
 
-            // Get username and password
-            string username = UsernameTextBox.Text.Trim();
-            string password = PasswordBox.Password;
-
-            // Basic validation
-            if (string.IsNullOrEmpty(username))
+            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {
-                ShowError("Please enter your username.");
-                UsernameTextBox.Focus(FocusState.Programmatic);
+                ShowError("Please enter both username and password.");
                 return;
             }
-
-            if (string.IsNullOrEmpty(password))
-            {
-                ShowError("Please enter your password.");
-                PasswordBox.Focus(FocusState.Programmatic);
-                return;
-            }
-
-            _isLoggingIn = true;
-            ShowLoading(true);
 
             try
             {
-                var loginResponse = await _apiService.LoginAsync(username, password);
+                _isLoggingIn = true;
+                SetLoginState(true);
 
-                if (loginResponse != null && !string.IsNullOrEmpty(loginResponse.message) &&
-                    loginResponse.message.Contains("successful", StringComparison.OrdinalIgnoreCase))
+                var response = await _apiService.LoginAsync(username, password);
+
+                if (response.Success && response.Data != null)
                 {
-                    // Login successful - show success message briefly
-                    ShowSuccess("Login successful! Opening application...");
+                    // Save session
+                    _sessionManager.SetSession(
+                        response.Data.User,
+                        response.Data.Token,
+                        response.Data.RefreshToken
+                    );
 
-                    // Small delay for user feedback
-                    await Task.Delay(1000);
+                    // Show success briefly
+                    await _notificationService.ShowSuccessAsync("Login successful!");
 
-                    // Open main window
-                    var mainWindow = new Views.MainWindow();
+                    // Navigate to main window
+                    var mainWindow = new MainWindow();
                     mainWindow.Activate();
-
-                    // Close login window
                     this.Close();
                 }
                 else
                 {
-                    ShowError(loginResponse?.message ?? "Login failed. Please check your credentials.");
-                }
-            }
-            catch (TimeoutException)
-            {
-                ShowError("Connection timeout. Please check your internet connection and try again.");
-            }
-            catch (HttpRequestException ex)
-            {
-                if (ex.Message.Contains("No connection could be made"))
-                {
-                    ShowError("Cannot connect to server. Please check your connection and try again.");
-                }
-                else
-                {
-                    ShowError("Network error occurred. Please try again.");
+                    ShowError(response.Message ?? "Login failed. Please check your credentials.");
                 }
             }
             catch (Exception ex)
             {
-                ShowError($"An unexpected error occurred: {ex.Message}");
+                ShowError($"Login failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Login error: {ex}");
             }
             finally
             {
                 _isLoggingIn = false;
-                ShowLoading(false);
+                SetLoginState(false);
+            }
+        }
+
+        private void SetLoginState(bool isLogging)
+        {
+            LoginButton.IsEnabled = !isLogging;
+            UsernameTextBox.IsEnabled = !isLogging;
+            PasswordBox.IsEnabled = !isLogging;
+            LoadingPanel.Visibility = isLogging ? Visibility.Visible : Visibility.Collapsed;
+
+            if (isLogging)
+            {
+                ErrorInfoBar.IsOpen = false;
             }
         }
 
         private void ShowError(string message)
         {
-            StatusTextBlock.Text = message;
-            StatusTextBlock.Foreground = new SolidColorBrush(Color.FromArgb(255, 205, 92, 92));
-            StatusContainer.Background = new SolidColorBrush(Color.FromArgb(32, 255, 68, 68));
-            StatusContainer.BorderBrush = new SolidColorBrush(Color.FromArgb(96, 255, 68, 68));
-            StatusContainer.Visibility = Visibility.Visible;
-
-            // Animate error appearance
-            AnimateStatusMessage();
+            ErrorInfoBar.Message = message;
+            ErrorInfoBar.IsOpen = true;
         }
 
-        private void ShowSuccess(string message)
+        private async void CheckConnectionStatus()
         {
-            StatusTextBlock.Text = message;
-            StatusTextBlock.Foreground = new SolidColorBrush(Color.FromArgb(255, 144, 238, 144));
-            StatusContainer.Background = new SolidColorBrush(Color.FromArgb(32, 76, 175, 80));
-            StatusContainer.BorderBrush = new SolidColorBrush(Color.FromArgb(96, 76, 175, 80));
-            StatusContainer.Visibility = Visibility.Visible;
-
-            AnimateStatusMessage();
-        }
-
-        private void HideError()
-        {
-            StatusContainer.Visibility = Visibility.Collapsed;
-        }
-
-        private void ShowLoading(bool show)
-        {
-            LoadingOverlay.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
-            LoginButton.IsEnabled = !show;
-            UsernameTextBox.IsEnabled = !show;
-            PasswordBox.IsEnabled = !show;
-        }
-
-        private void AnimateStatusMessage()
-        {
-            var transform = new CompositeTransform
+            try
             {
-                ScaleX = 0.8,
-                ScaleY = 0.8
-            };
-            StatusContainer.RenderTransform = transform;
-            StatusContainer.Opacity = 0;
+                // Simple connectivity check - you might want to ping your API endpoint
+                ConnectionStatusText.Text = "Connected";
+                ConnectionIndicator.Fill = new SolidColorBrush(Colors.Green);
 
-            var storyboard = new Storyboard();
-
-            var fadeIn = new DoubleAnimation
+                // You could add an actual API health check here
+                // var healthCheck = await _apiService.CheckHealthAsync();
+            }
+            catch
             {
-                From = 0,
-                To = 1,
-                Duration = TimeSpan.FromMilliseconds(300)
-            };
-            Storyboard.SetTarget(fadeIn, StatusContainer);
-            Storyboard.SetTargetProperty(fadeIn, "Opacity");
-
-            var scaleX = new DoubleAnimation
-            {
-                From = 0.8,
-                To = 1,
-                Duration = TimeSpan.FromMilliseconds(300),
-                EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut }
-            };
-            Storyboard.SetTarget(scaleX, transform);
-            Storyboard.SetTargetProperty(scaleX, "ScaleX");
-
-            var scaleY = new DoubleAnimation
-            {
-                From = 0.8,
-                To = 1,
-                Duration = TimeSpan.FromMilliseconds(300),
-                EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut }
-            };
-            Storyboard.SetTarget(scaleY, transform);
-            Storyboard.SetTargetProperty(scaleY, "ScaleY");
-
-            storyboard.Children.Add(fadeIn);
-            storyboard.Children.Add(scaleX);
-            storyboard.Children.Add(scaleY);
-            storyboard.Begin();
+                ConnectionStatusText.Text = "Connection Error";
+                ConnectionIndicator.Fill = new SolidColorBrush(Colors.Red);
+            }
         }
     }
 }

@@ -1,152 +1,373 @@
-<!-- Views/Pages/MessagingPage.xaml -->
-<Page x:Class="DrLab.Desktop.Views.Pages.MessagingPage"
-      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-      xmlns:messaging="using:DrLab.Desktop.Views.Messaging"
-      mc:Ignorable="d"
-      Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="DrLab.Desktop.Views.Pages.SamplesPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:DrLab.Desktop.Views.Pages"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
-    <Page.Resources>
-        <!-- Converters -->
-        <messaging:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-        <messaging:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter"/>
-        <messaging:MessageAlignmentConverter x:Key="MessageAlignmentConverter"/>
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
-        <!-- Message Item Template -->
-        <DataTemplate x:Key="MessageItemTemplate" x:DataType="messaging:MessageModel">
-            <Grid Margin="0,4">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Spacing="8">
+            <TextBlock Text="Sample Management" 
+                      FontSize="28" 
+                      FontWeight="SemiBold"/>
+            <TextBlock Text="Track and manage laboratory samples throughout their lifecycle" 
+                      FontSize="14" 
+                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+        </StackPanel>
 
-                <!-- Left spacer for sent messages -->
-                <Border Grid.Column="0" 
-                        Width="80"
-                        Visibility="{x:Bind IsSentByCurrentUser, Converter={StaticResource BoolToVisibilityConverter}}"/>
+        <!-- Action Bar -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
 
-                <!-- Message content -->
-                <Border Grid.Column="1"
-                        Background="{x:Bind IsSentByCurrentUser, Converter={StaticResource MessageBackgroundConverter}}"
-                        CornerRadius="16"
-                        Padding="16,8"
-                        Margin="8,2"
-                        MaxWidth="400">
+            <!-- Search Box -->
+            <TextBox Grid.Column="0"
+                    x:Name="SearchBox"
+                    PlaceholderText="Search samples by ID, client, or batch..."
+                    FontSize="14"
+                    Padding="12,8"
+                    MaxWidth="400"
+                    HorizontalAlignment="Left">
+                <TextBox.Resources>
+                    <Style TargetType="TextBox">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="TextBox">
+                                    <Grid>
+                                        <Border Background="{TemplateBinding Background}"
+                                               BorderBrush="{TemplateBinding BorderBrush}"
+                                               BorderThickness="{TemplateBinding BorderThickness}"
+                                               CornerRadius="6">
+                                            <Grid Margin="8,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <FontIcon Grid.Column="0"
+                                                         FontFamily="Segoe MDL2 Assets"
+                                                         Glyph="&#xE721;"
+                                                         FontSize="16"
+                                                         Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                         Margin="0,0,8,0"/>
+                                                <ScrollViewer Grid.Column="1"
+                                                             x:Name="ContentElement"
+                                                             HorizontalScrollMode="Disabled"
+                                                             HorizontalScrollBarVisibility="Disabled"
+                                                             VerticalScrollMode="Disabled"
+                                                             VerticalScrollBarVisibility="Disabled"
+                                                             IsTabStop="False"
+                                                             ZoomMode="Disabled"/>
+                                            </Grid>
+                                        </Border>
+                                    </Grid>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </TextBox.Resources>
+            </TextBox>
 
-                    <StackPanel>
-                        <!-- Sender name for group chats -->
-                        <TextBlock Text="{x:Bind SenderName}"
-                                   FontSize="12"
-                                   FontWeight="SemiBold"
-                                   Foreground="{ThemeResource SystemColorGrayTextBrush}"
-                                   Margin="0,0,0,4"
-                                   Visibility="{x:Bind ShowSenderName, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            <!-- Filter Dropdown -->
+            <ComboBox Grid.Column="1"
+                     x:Name="StatusFilterComboBox"
+                     Header="Status Filter"
+                     PlaceholderText="All Statuses"
+                     MinWidth="150">
+                <ComboBoxItem Content="All Statuses"/>
+                <ComboBoxItem Content="Received"/>
+                <ComboBoxItem Content="In Progress"/>
+                <ComboBoxItem Content="Completed"/>
+                <ComboBoxItem Content="Disposed"/>
+            </ComboBox>
 
-                        <!-- Reply indicator -->
-                        <Border Background="{ThemeResource SystemColorGrayTextBrush}"
-                                CornerRadius="8"
-                                Padding="8,4"
-                                Margin="0,0,0,8"
-                                Opacity="0.7"
-                                Visibility="{x:Bind IsReply, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <TextBlock Text="{x:Bind ReplyToMessage.Content}"
-                                       FontSize="12"
-                                       MaxLines="2"
-                                       TextTrimming="CharacterEllipsis"/>
-                        </Border>
-
-                        <!-- Message content -->
-                        <TextBlock Text="{x:Bind Content}"
-                                   FontSize="14"
-                                   TextWrapping="Wrap"
-                                   Foreground="{x:Bind IsSentByCurrentUser, Converter={StaticResource MessageForegroundConverter}}"
-                                   Visibility="{x:Bind IsFileMessage, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
-
-                        <!-- File message content -->
-                        <StackPanel Orientation="Horizontal"
-                                    Visibility="{x:Bind IsFileMessage, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <FontIcon FontFamily="Segoe MDL2 Assets" 
-                                      Glyph="&#xE8A5;" 
-                                      FontSize="16"
-                                      Margin="0,0,8,0"/>
-                            <TextBlock Text="{x:Bind Content}"
-                                       FontSize="14"
-                                       Foreground="{x:Bind IsSentByCurrentUser, Converter={StaticResource MessageForegroundConverter}}"/>
-                        </StackPanel>
-
-                        <!-- Timestamp -->
-                        <TextBlock Text="{x:Bind TimestampFormatted}"
-                                   FontSize="11"
-                                   Foreground="{ThemeResource SystemColorGrayTextBrush}"
-                                   HorizontalAlignment="Right"
-                                   Margin="0,4,0,0"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- Right spacer for received messages -->
-                <Border Grid.Column="2" 
-                        Width="80"
-                        Visibility="{x:Bind IsSentByCurrentUser, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
-            </Grid>
-        </DataTemplate>
-    </Page.Resources>
-
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="320" MinWidth="250"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
-
-        <!-- Conversations Panel -->
-        <Border Grid.Column="0"
-                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                BorderThickness="0,0,1,0">
-            <messaging:ConversationListPanel x:Name="ConversationListPanel"/>
-        </Border>
-
-        <!-- Messages Panel -->
-        <Grid Grid.Column="1">
-            <!-- No conversation selected state -->
-            <StackPanel HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        Spacing="16"
-                        Visibility="{x:Bind ViewModel.HasActiveConversation, Converter={StaticResource InverseBoolToVisibilityConverter}, Mode=OneWay}">
-                <FontIcon FontFamily="Segoe MDL2 Assets" 
-                          Glyph="&#xE8BD;" 
-                          FontSize="64"
-                          Foreground="{ThemeResource SystemColorGrayTextBrush}"/>
-                <TextBlock Text="Select a conversation to start messaging"
-                           FontSize="16"
-                           Foreground="{ThemeResource SystemColorGrayTextBrush}"
-                           HorizontalAlignment="Center"/>
-            </StackPanel>
-
-            <!-- Messages view -->
-            <messaging:MessageView x:Name="MessageView"
-                                   Visibility="{x:Bind ViewModel.HasActiveConversation, Converter={StaticResource BoolToVisibilityConverter}, Mode=OneWay}"/>
+            <!-- Add Sample Button -->
+            <Button Grid.Column="3"
+                   x:Name="AddSampleButton"
+                   Style="{ThemeResource AccentButtonStyle}"
+                   Padding="16,8"
+                   Click="AddSampleButton_Click">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <FontIcon FontFamily="Segoe MDL2 Assets" 
+                             Glyph="&#xE710;" 
+                             FontSize="16"/>
+                    <TextBlock Text="Add Sample"/>
+                </StackPanel>
+            </Button>
         </Grid>
 
-        <!-- Connection status indicator -->
-        <Border Grid.ColumnSpan="2"
-                Background="{ThemeResource SystemFillColorCriticalBrush}"
-                Padding="12,8"
-                VerticalAlignment="Top"
-                Visibility="{x:Bind ViewModel.IsConnected, Converter={StaticResource InverseBoolToVisibilityConverter}, Mode=OneWay}">
-            <StackPanel Orientation="Horizontal" 
-                        HorizontalAlignment="Center"
-                        Spacing="8">
-                <FontIcon FontFamily="Segoe MDL2 Assets" 
-                          Glyph="&#xE783;" 
-                          FontSize="16"
-                          Foreground="White"/>
-                <TextBlock Text="Disconnected from messaging server"
-                           FontSize="14"
-                           Foreground="White"/>
-            </StackPanel>
+        <!-- Samples DataGrid -->
+        <Border Grid.Row="4"
+               Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+               BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+               BorderThickness="1"
+               CornerRadius="8">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Table Header -->
+                <Border Grid.Row="0"
+                       Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                       CornerRadius="8,8,0,0"
+                       Padding="20,16">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="200"/>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" Text="Sample ID" FontWeight="SemiBold" FontSize="14"/>
+                        <TextBlock Grid.Column="1" Text="Client" FontWeight="SemiBold" FontSize="14"/>
+                        <TextBlock Grid.Column="2" Text="Sample Type" FontWeight="SemiBold" FontSize="14"/>
+                        <TextBlock Grid.Column="3" Text="Status" FontWeight="SemiBold" FontSize="14"/>
+                        <TextBlock Grid.Column="4" Text="Received Date" FontWeight="SemiBold" FontSize="14"/>
+                        <TextBlock Grid.Column="5" Text="Due Date" FontWeight="SemiBold" FontSize="14"/>
+                        <TextBlock Grid.Column="6" Text="Actions" FontWeight="SemiBold" FontSize="14"/>
+                    </Grid>
+                </Border>
+
+                <!-- Samples List -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="SamplesContainer" Padding="20,0,20,20">
+                        <!-- Sample rows will be added programmatically -->
+                        <!-- Sample Row Template (for reference) -->
+                        <Border Background="Transparent"
+                               BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                               BorderThickness="0,0,0,1"
+                               Padding="0,16">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="200"/>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0" 
+                                          Text="WS-2024-001" 
+                                          FontFamily="Consolas"
+                                          FontWeight="SemiBold"
+                                          VerticalAlignment="Center"/>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="City of Johannesburg" FontWeight="Medium"/>
+                                    <TextBlock Text="Water Department" 
+                                              FontSize="12" 
+                                              Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                </StackPanel>
+
+                                <TextBlock Grid.Column="2" 
+                                          Text="Potable Water" 
+                                          VerticalAlignment="Center"/>
+
+                                <Border Grid.Column="3"
+                                       Background="#E8F5E8"
+                                       CornerRadius="12"
+                                       Padding="8,4"
+                                       HorizontalAlignment="Left"
+                                       VerticalAlignment="Center">
+                                    <TextBlock Text="In Progress" 
+                                              FontSize="12" 
+                                              FontWeight="SemiBold"
+                                              Foreground="#2E7D2E"/>
+                                </Border>
+
+                                <TextBlock Grid.Column="4" 
+                                          Text="2024-06-20" 
+                                          VerticalAlignment="Center"/>
+
+                                <TextBlock Grid.Column="5" 
+                                          Text="2024-06-25" 
+                                          VerticalAlignment="Center"
+                                          Foreground="#FF9800"
+                                          FontWeight="SemiBold"/>
+
+                                <StackPanel Grid.Column="6" 
+                                           Orientation="Horizontal" 
+                                           Spacing="8"
+                                           VerticalAlignment="Center">
+                                    <Button Style="{ThemeResource SubtleButtonStyle}"
+                                           Padding="8"
+                                           ToolTipService.ToolTip="View Details">
+                                        <FontIcon FontFamily="Segoe MDL2 Assets" 
+                                                 Glyph="&#xE7B3;" 
+                                                 FontSize="14"/>
+                                    </Button>
+                                    <Button Style="{ThemeResource SubtleButtonStyle}"
+                                           Padding="8"
+                                           ToolTipService.ToolTip="Edit Sample">
+                                        <FontIcon FontFamily="Segoe MDL2 Assets" 
+                                                 Glyph="&#xE70F;" 
+                                                 FontSize="14"/>
+                                    </Button>
+                                    <Button Style="{ThemeResource SubtleButtonStyle}"
+                                           Padding="8"
+                                           ToolTipService.ToolTip="Print Barcode">
+                                        <FontIcon FontFamily="Segoe MDL2 Assets" 
+                                                 Glyph="&#xE8FE;" 
+                                                 FontSize="14"/>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Additional sample rows would be here -->
+                        <Border Background="Transparent"
+                               BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                               BorderThickness="0,0,0,1"
+                               Padding="0,16">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="200"/>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0" 
+                                          Text="WS-2024-002" 
+                                          FontFamily="Consolas"
+                                          FontWeight="SemiBold"
+                                          VerticalAlignment="Center"/>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Rand Water" FontWeight="Medium"/>
+                                    <TextBlock Text="Quality Control" 
+                                              FontSize="12" 
+                                              Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                </StackPanel>
+
+                                <TextBlock Grid.Column="2" 
+                                          Text="Raw Water" 
+                                          VerticalAlignment="Center"/>
+
+                                <Border Grid.Column="3"
+                                       Background="#FFF3E0"
+                                       CornerRadius="12"
+                                       Padding="8,4"
+                                       HorizontalAlignment="Left"
+                                       VerticalAlignment="Center">
+                                    <TextBlock Text="Pending" 
+                                              FontSize="12" 
+                                              FontWeight="SemiBold"
+                                              Foreground="#E65100"/>
+                                </Border>
+
+                                <TextBlock Grid.Column="4" 
+                                          Text="2024-06-21" 
+                                          VerticalAlignment="Center"/>
+
+                                <TextBlock Grid.Column="5" 
+                                          Text="2024-06-26" 
+                                          VerticalAlignment="Center"/>
+
+                                <StackPanel Grid.Column="6" 
+                                           Orientation="Horizontal" 
+                                           Spacing="8"
+                                           VerticalAlignment="Center">
+                                    <Button Style="{ThemeResource SubtleButtonStyle}"
+                                           Padding="8"
+                                           ToolTipService.ToolTip="View Details">
+                                        <FontIcon FontFamily="Segoe MDL2 Assets" 
+                                                 Glyph="&#xE7B3;" 
+                                                 FontSize="14"/>
+                                    </Button>
+                                    <Button Style="{ThemeResource SubtleButtonStyle}"
+                                           Padding="8"
+                                           ToolTipService.ToolTip="Edit Sample">
+                                        <FontIcon FontFamily="Segoe MDL2 Assets" 
+                                                 Glyph="&#xE70F;" 
+                                                 FontSize="14"/>
+                                    </Button>
+                                    <Button Style="{ThemeResource SubtleButtonStyle}"
+                                           Padding="8"
+                                           ToolTipService.ToolTip="Print Barcode">
+                                        <FontIcon FontFamily="Segoe MDL2 Assets" 
+                                                 Glyph="&#xE8FE;" 
+                                                 FontSize="14"/>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Loading indicator -->
+                        <StackPanel x:Name="LoadingPanel" 
+                                   Orientation="Horizontal" 
+                                   HorizontalAlignment="Center"
+                                   Spacing="12"
+                                   Margin="0,40"
+                                   Visibility="Collapsed">
+                            <ProgressRing IsActive="True" Width="24" Height="24"/>
+                            <TextBlock Text="Loading samples..." VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- Empty state -->
+                        <StackPanel x:Name="EmptyStatePanel"
+                                   HorizontalAlignment="Center"
+                                   Spacing="16"
+                                   Margin="0,60"
+                                   Visibility="Collapsed">
+                            <FontIcon FontFamily="Segoe MDL2 Assets" 
+                                     Glyph="&#xE82F;" 
+                                     FontSize="48"
+                                     Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                     HorizontalAlignment="Center"/>
+                            <TextBlock Text="No samples found" 
+                                      FontSize="18" 
+                                      FontWeight="SemiBold"
+                                      HorizontalAlignment="Center"/>
+                            <TextBlock Text="Start by adding a new sample to the system" 
+                                      FontSize="14"
+                                      Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                      HorizontalAlignment="Center"/>
+                            <Button Content="Add Sample" 
+                                   Style="{ThemeResource AccentButtonStyle}"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,16,0,0"
+                                   Click="AddSampleButton_Click">
+                                <Button.Content>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon FontFamily="Segoe MDL2 Assets" 
+                                                 Glyph="&#xE710;" 
+                                                 FontSize="16"/>
+                                        <TextBlock Text="Add Sample"/>
+                                    </StackPanel>
+                                </Button.Content>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
         </Border>
     </Grid>
 </Page>

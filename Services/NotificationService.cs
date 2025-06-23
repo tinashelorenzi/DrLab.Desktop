@@ -1,270 +1,271 @@
 ﻿using System;
-using Windows.Data.Xml.Dom;
-using Windows.UI.Notifications;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Dispatching;
+using Windows.UI.Notifications;
+using Microsoft.Toolkit.Win32.UI.Notifications;
 
 namespace DrLab.Desktop.Services
 {
     public class NotificationService
     {
-        private static NotificationService? _instance;
-        private static readonly object _lock = new object();
-        private static Window? _mainWindow;
+        private static readonly Lazy<NotificationService> _instance = new(() => new NotificationService());
+        public static NotificationService Instance => _instance.Value;
 
-        // Notification types for easy templating
-        public enum NotificationType
-        {
-            Security,
-            Success,
-            Warning,
-            Error,
-            Info,
-            Message,
-            QualityControl,
-            SampleAlert
-        }
+        private static Window? _mainWindow;
+        private readonly DispatcherQueue _dispatcher;
+        private readonly Queue<NotificationItem> _pendingNotifications = new();
+
+        public event EventHandler<NotificationEventArgs>? NotificationReceived;
 
         private NotificationService()
         {
-            // Initialize notification system
-            EnsureNotificationPermissions();
+            _dispatcher = DispatcherQueue.GetForCurrentThread();
         }
 
-        public static NotificationService Instance
+        public static void SetMainWindow(Window window)
         {
-            get
+            _mainWindow = window;
+        }
+
+        public async Task ShowSuccessAsync(string message, string? title = null)
+        {
+            await ShowNotificationAsync(message, title ?? "Success", NotificationType.Success);
+        }
+
+        public async Task ShowErrorAsync(string message, string? title = null)
+        {
+            await ShowNotificationAsync(message, title ?? "Error", NotificationType.Error);
+        }
+
+        public async Task ShowInfoAsync(string message, string? title = null)
+        {
+            await ShowNotificationAsync(message, title ?? "Information", NotificationType.Info);
+        }
+
+        public async Task ShowWarningAsync(string message, string? title = null)
+        {
+            await ShowNotificationAsync(message, title ?? "Warning", NotificationType.Warning);
+        }
+
+        public async Task ShowNotificationAsync(string message, string title, NotificationType type)
+        {
+            var notification = new NotificationItem
             {
-                if (_instance == null)
-                {
-                    lock (_lock)
-                    {
-                        _instance ??= new NotificationService();
-                    }
-                }
-                return _instance;
+                Id = Guid.NewGuid().ToString(),
+                Title = title,
+                Message = message,
+                Type = type,
+                Timestamp = DateTime.Now,
+                IsRead = false
+            };
+
+            // Dispatch to UI thread if needed
+            if (_dispatcher.HasThreadAccess)
+            {
+                await DisplayNotificationAsync(notification);
             }
+            else
+            {
+                _dispatcher.TryEnqueue(async () => await DisplayNotificationAsync(notification));
+            }
+
+            // Raise event
+            NotificationReceived?.Invoke(this, new NotificationEventArgs(notification));
         }
 
-        /// <summary>
-        /// Set the main window reference for notification click handling
-        /// </summary>
-        public static void SetMainWindow(Window mainWindow)
-        {
-            _mainWindow = mainWindow;
-        }
-
-        /// <summary>
-        /// Show security login notification
-        /// </summary>
-        public void ShowLoginNotification(string username, string department, DateTime loginTime)
-        {
-            var title = "🔐 DrLab LIMS - Secure Login";
-            var message = $"Welcome back, {username}!\n" +
-                         $"Department: {department}\n" +
-                         $"Login: {loginTime:yyyy-MM-dd HH:mm:ss}";
-
-            ShowNotification(title, message, NotificationType.Security);
-        }
-
-        /// <summary>
-        /// Show sample related notifications
-        /// </summary>
-        public void ShowSampleNotification(string sampleId, string status, string message)
-        {
-            var title = $"🧪 Sample Update - {sampleId}";
-            var fullMessage = $"Status: {status}\n{message}";
-
-            ShowNotification(title, fullMessage, NotificationType.SampleAlert);
-        }
-
-        /// <summary>
-        /// Show QC notifications
-        /// </summary>
-        public void ShowQCNotification(string batchId, string issue, bool isUrgent = false)
-        {
-            var title = isUrgent ? "🚨 URGENT QC Issue" : "⚠️ QC Alert";
-            var message = $"Batch: {batchId}\nIssue: {issue}";
-
-            ShowNotification(title, message, NotificationType.QualityControl);
-        }
-
-        /// <summary>
-        /// Show messaging notifications for future messaging system
-        /// </summary>
-        public void ShowMessageNotification(string sender, string preview, string conversationId)
-        {
-            var title = $"💬 New Message from {sender}";
-            var message = preview.Length > 50 ? preview.Substring(0, 50) + "..." : preview;
-
-            ShowNotification(title, message, NotificationType.Message);
-        }
-
-        /// <summary>
-        /// Generic success notification
-        /// </summary>
-        public void ShowSuccess(string title, string message)
-        {
-            ShowNotification($"✅ {title}", message, NotificationType.Success);
-        }
-
-        /// <summary>
-        /// Generic error notification  
-        /// </summary>
-        public void ShowError(string title, string message)
-        {
-            ShowNotification($"❌ {title}", message, NotificationType.Error);
-        }
-
-        /// <summary>
-        /// Generic warning notification
-        /// </summary>
-        public void ShowWarning(string title, string message)
-        {
-            ShowNotification($"⚠️ {title}", message, NotificationType.Warning);
-        }
-
-        /// <summary>
-        /// Core notification method that handles all notification display
-        /// </summary>
-        private void ShowNotification(string title, string message, NotificationType type)
+        private async Task DisplayNotificationAsync(NotificationItem notification)
         {
             try
             {
-                // Create the toast content
-                var toastXml = CreateSimpleToastContent(title, message);
+                // Show in-app notification if main window is available
+                if (_mainWindow != null)
+                {
+                    await ShowInAppNotificationAsync(notification);
+                }
 
-                // Create the toast notification
-                var toast = new ToastNotification(toastXml);
+                // Show Windows toast notification
+                ShowToastNotification(notification);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to display notification: {ex.Message}");
+                // Fallback to queue for later display
+                _pendingNotifications.Enqueue(notification);
+            }
+        }
 
-                // Set notification properties based on type
-                ConfigureToastProperties(toast, type);
+        private async Task ShowInAppNotificationAsync(NotificationItem notification)
+        {
+            if (_mainWindow?.Content is not FrameworkElement content)
+                return;
 
-                // Show the notification
+            try
+            {
+                // Create info bar for in-app notification
+                var infoBar = new InfoBar
+                {
+                    Title = notification.Title,
+                    Message = notification.Message,
+                    Severity = notification.Type switch
+                    {
+                        NotificationType.Success => InfoBarSeverity.Success,
+                        NotificationType.Error => InfoBarSeverity.Error,
+                        NotificationType.Warning => InfoBarSeverity.Warning,
+                        _ => InfoBarSeverity.Informational
+                    },
+                    IsOpen = true,
+                    Margin = new Thickness(20, 20, 20, 0),
+                    VerticalAlignment = VerticalAlignment.Top,
+                    HorizontalAlignment = HorizontalAlignment.Stretch
+                };
+
+                // Auto-close after 5 seconds
+                var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+                timer.Tick += (s, e) =>
+                {
+                    infoBar.IsOpen = false;
+                    timer.Stop();
+                };
+                timer.Start();
+
+                // Find a suitable parent to add the InfoBar
+                if (content is Grid grid)
+                {
+                    grid.Children.Add(infoBar);
+                    Grid.SetZIndex(infoBar, 1000); // Ensure it's on top
+                }
+                else if (content is Panel panel)
+                {
+                    panel.Children.Add(infoBar);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to show in-app notification: {ex.Message}");
+            }
+        }
+
+        private void ShowToastNotification(NotificationItem notification)
+        {
+            try
+            {
+                // Create toast notification
+                var toastContent = new ToastContentBuilder()
+                    .AddText(notification.Title)
+                    .AddText(notification.Message)
+                    .SetToastScenario(ToastScenario.Default);
+
+                // Add icon based on type
+                var iconPath = notification.Type switch
+                {
+                    NotificationType.Success => "ms-appx:///Assets/success.png",
+                    NotificationType.Error => "ms-appx:///Assets/error.png",
+                    NotificationType.Warning => "ms-appx:///Assets/warning.png",
+                    _ => "ms-appx:///Assets/info.png"
+                };
+
+                var toast = new ToastNotification(toastContent.GetXml())
+                {
+                    Tag = notification.Id,
+                    ExpirationTime = DateTime.Now.AddMinutes(5)
+                };
+
                 ToastNotificationManager.CreateToastNotifier("DrLab.Desktop").Show(toast);
-
-                // Log for debugging
-                System.Diagnostics.Debug.WriteLine($"Notification shown: {type} - {title}");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Failed to show notification: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Failed to show toast notification: {ex.Message}");
             }
         }
 
-        /// <summary>
-        /// Create simple toast XML content
-        /// </summary>
-        private XmlDocument CreateSimpleToastContent(string title, string message)
+        public void ShowPendingNotifications()
         {
-            // Use simple text-only template for better compatibility
-            var toastXml = ToastNotificationManager.GetTemplateContent(ToastTemplateType.ToastText02);
-
-            // Set the text content
-            var textNodes = toastXml.GetElementsByTagName("text");
-            textNodes[0].AppendChild(toastXml.CreateTextNode(title));
-            textNodes[1].AppendChild(toastXml.CreateTextNode(message));
-
-            return toastXml;
-        }
-
-        /// <summary>
-        /// Configure toast properties such as duration and sound
-        /// </summary>
-        private void ConfigureToastProperties(ToastNotification toast, NotificationType type)
-        {
-            // Set duration based on importance
-            toast.ExpirationTime = type switch
+            while (_pendingNotifications.Count > 0)
             {
-                NotificationType.Security => DateTimeOffset.Now.AddMinutes(10),
-                NotificationType.QualityControl => DateTimeOffset.Now.AddMinutes(30),
-                NotificationType.Error => DateTimeOffset.Now.AddMinutes(15),
-                _ => DateTimeOffset.Now.AddMinutes(5)
-            };
-
-            // Set priority for urgent notifications
-            if (type == NotificationType.QualityControl || type == NotificationType.Error)
-            {
-                toast.Priority = ToastNotificationPriority.High;
+                var notification = _pendingNotifications.Dequeue();
+                _ = DisplayNotificationAsync(notification);
             }
-
-            // Handle notification activation (when user clicks)
-            toast.Activated += (sender, args) =>
-            {
-                HandleNotificationClick(type);
-            };
         }
 
-        /// <summary>
-        /// Handle notification click events
-        /// </summary>
-        private void HandleNotificationClick(NotificationType type)
+        public async Task ShowMessageNotificationAsync(string senderName, string message, string conversationId)
+        {
+            var title = $"New message from {senderName}";
+            var truncatedMessage = message.Length > 100 ? message.Substring(0, 100) + "..." : message;
+
+            // Create actionable toast notification for messages
+            try
+            {
+                var toastContent = new ToastContentBuilder()
+                    .AddText(title)
+                    .AddText(truncatedMessage)
+                    .AddButton(new ToastButton()
+                        .SetContent("Reply")
+                        .AddArgument("action", "reply")
+                        .AddArgument("conversationId", conversationId))
+                    .AddButton(new ToastButton()
+                        .SetContent("View")
+                        .AddArgument("action", "view")
+                        .AddArgument("conversationId", conversationId))
+                    .SetToastScenario(ToastScenario.IncomingCall);
+
+                var toast = new ToastNotification(toastContent.GetXml())
+                {
+                    Tag = $"message_{conversationId}_{Guid.NewGuid()}",
+                    ExpirationTime = DateTime.Now.AddHours(1)
+                };
+
+                ToastNotificationManager.CreateToastNotifier("DrLab.Desktop").Show(toast);
+            }
+            catch (Exception ex)
+            {
+                // Fallback to regular notification
+                await ShowInfoAsync(truncatedMessage, title);
+                System.Diagnostics.Debug.WriteLine($"Failed to show message toast notification: {ex.Message}");
+            }
+        }
+
+        public void ClearNotifications()
         {
             try
             {
-                // Get the main window for dispatcher access
-                var mainWindow = _mainWindow;
-                if (mainWindow != null)
-                {
-                    mainWindow.DispatcherQueue.TryEnqueue(() =>
-                    {
-                        try
-                        {
-                            // Handle different notification types
-                            switch (type)
-                            {
-                                case NotificationType.Message:
-                                    System.Diagnostics.Debug.WriteLine("Message notification clicked - navigate to messaging");
-                                    // TODO: Navigate to messaging page when implemented
-                                    break;
-                                case NotificationType.QualityControl:
-                                    System.Diagnostics.Debug.WriteLine("QC notification clicked - navigate to QC page");
-                                    // TODO: Navigate to QC page when implemented
-                                    break;
-                                case NotificationType.Security:
-                                    System.Diagnostics.Debug.WriteLine("Security notification clicked");
-                                    // Could open security/audit log
-                                    break;
-                                case NotificationType.SampleAlert:
-                                    System.Diagnostics.Debug.WriteLine("Sample notification clicked - navigate to samples");
-                                    // TODO: Navigate to samples page
-                                    break;
-                                default:
-                                    System.Diagnostics.Debug.WriteLine($"{type} notification clicked");
-                                    break;
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Error handling notification click: {ex.Message}");
-                        }
-                    });
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine($"{type} notification clicked (no main window reference)");
-                }
+                ToastNotificationManager.CreateToastNotifier("DrLab.Desktop").RemoveFromSchedule();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error dispatching notification click: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Failed to clear notifications: {ex.Message}");
             }
         }
+    }
 
-        /// <summary>
-        /// Ensure notification permissions are granted
-        /// </summary>
-        private void EnsureNotificationPermissions()
+    public enum NotificationType
+    {
+        Info,
+        Success,
+        Warning,
+        Error
+    }
+
+    public class NotificationItem
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+        public NotificationType Type { get; set; }
+        public DateTime Timestamp { get; set; }
+        public bool IsRead { get; set; }
+        public string? ActionData { get; set; }
+    }
+
+    public class NotificationEventArgs : EventArgs
+    {
+        public NotificationItem Notification { get; }
+
+        public NotificationEventArgs(NotificationItem notification)
         {
-            try
-            {
-                // Note: For WinUI 3 apps, toast notifications should work by default
-                // If you need explicit permission handling, implement it here
-                System.Diagnostics.Debug.WriteLine("Notification system initialized");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Failed to initialize notifications: {ex.Message}");
-            }
+            Notification = notification;
         }
     }
 }

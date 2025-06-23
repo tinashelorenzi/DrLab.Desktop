@@ -2,24 +2,31 @@
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using DrLab.Desktop;
-using LIMS.Models.Messaging;
+using DrLab.Desktop.Models;
+using Microsoft.Extensions.Configuration;
 
-namespace LIMS.Services
+namespace DrLab.Desktop.Services
 {
     public class ApiService : IDisposable
     {
         private readonly HttpClient _httpClient;
         private readonly string _baseUrl;
-        private string _authToken;
+        private string? _authToken;
 
-        public ApiService(string baseUrl)
+        public ApiService(IConfiguration configuration)
         {
-            _baseUrl = baseUrl.TrimEnd('/');
             _httpClient = new HttpClient();
+            _baseUrl = configuration["ApiSettings:BaseUrl"] ?? "http://localhost:8000";
+
+            var timeout = configuration.GetValue<int>("ApiSettings:Timeout", 30);
+            _httpClient.Timeout = TimeSpan.FromSeconds(timeout);
+
+            // Set default headers
+            _httpClient.DefaultRequestHeaders.Accept.Clear();
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         }
 
@@ -29,309 +36,282 @@ namespace LIMS.Services
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
 
-        // Authentication
-        public async Task<AuthResponse> LoginAsync(string username, string password)
+        public void ClearAuthToken()
         {
-            var loginData = new { username, password };
-            var response = await PostAsync<AuthResponse>("api/auth/login/", loginData);
-
-            if (response != null)
-            {
-                SetAuthToken(response.Access);
-            }
-
-            return response;
+            _authToken = null;
+            _httpClient.DefaultRequestHeaders.Authorization = null;
         }
 
-        // User Management
-        public async Task<UserKeyPair> GetUserKeyPairAsync(string userId)
-        {
-            return await GetAsync<UserKeyPair>($"api/users/{userId}/keypair/");
-        }
-
-        public async Task<bool> SetupUserEncryptionAsync(string password)
-        {
-            var data = new { password };
-            var response = await PostAsync<object>("api/messaging/setup-encryption/", data);
-            return response != null;
-        }
-
-        // Conversations
-        public async Task<List<ConversationModel>> GetConversationsAsync()
-        {
-            var conversations = await GetAsync<List<ConversationDto>>("api/messaging/conversations/");
-            return conversations?.ConvertAll(ConvertToConversationModel) ?? new List<ConversationModel>();
-        }
-
-        public async Task<ConversationModel> CreateConversationAsync(List<string> participantIds, string conversationType = "direct", string name = null)
-        {
-            var data = new
-            {
-                participants = participantIds,
-                type = conversationType,
-                name
-            };
-
-            var conversation = await PostAsync<ConversationDto>("api/messaging/conversations/create/", data);
-            return conversation != null ? ConvertToConversationModel(conversation) : null;
-        }
-
-        public async Task<List<ConversationParticipant>> GetConversationParticipantsAsync(string conversationId)
-        {
-            return await GetAsync<List<ConversationParticipant>>($"api/messaging/conversations/{conversationId}/participants/");
-        }
-
-        public async Task<string> GetConversationKeyAsync(string conversationId)
-        {
-            var response = await GetAsync<ConversationKeyResponse>($"api/messaging/conversations/{conversationId}/key/");
-            return response?.EncryptedKey;
-        }
-
-        public async Task<bool> UpdateConversationKeysAsync(string conversationId, Dictionary<string, string> encryptedKeys)
-        {
-            var data = new { encrypted_keys = encryptedKeys };
-            var response = await PostAsync<object>($"api/messaging/conversations/{conversationId}/keys/", data);
-            return response != null;
-        }
-
-        // Messages
-        public async Task<List<MessageModel>> GetMessagesAsync(string conversationId, int page = 1, int pageSize = 50)
-        {
-            var messages = await GetAsync<List<MessageDto>>($"api/messaging/conversations/{conversationId}/messages/?page={page}&page_size={pageSize}");
-            return messages?.ConvertAll(ConvertToMessageModel) ?? new List<MessageModel>();
-        }
-
-        public async Task<MessageModel> SendMessageAsync(string conversationId, string encryptedContent, string messageType = "text", string replyToId = null)
-        {
-            var data = new
-            {
-                conversation_id = conversationId,
-                encrypted_content = encryptedContent,
-                message_type = messageType,
-                reply_to_id = replyToId
-            };
-
-            var message = await PostAsync<MessageDto>("api/messaging/messages/send/", data);
-            return message != null ? ConvertToMessageModel(message) : null;
-        }
-
-        public async Task<bool> MarkMessageAsReadAsync(string messageId)
-        {
-            var response = await PostAsync<object>($"api/messaging/messages/{messageId}/mark-read/", new { });
-            return response != null;
-        }
-
-        // File uploads
-        public async Task<FileUploadResponse> UploadFileAsync(string filePath, string fileName)
-        {
-            using var form = new MultipartFormDataContent();
-            using var fileContent = new ByteArrayContent(await System.IO.File.ReadAllBytesAsync(filePath));
-            fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
-
-            form.Add(fileContent, "file", fileName);
-
-            var response = await _httpClient.PostAsync($"{_baseUrl}/api/messaging/files/upload/", form);
-
-            if (response.IsSuccessStatusCode)
-            {
-                var json = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<FileUploadResponse>(json, GetJsonOptions());
-            }
-
-            return null;
-        }
-
-        public async Task<byte[]> DownloadFileAsync(string fileId)
-        {
-            var response = await _httpClient.GetAsync($"{_baseUrl}/api/messaging/files/{fileId}/download/");
-
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadAsByteArrayAsync();
-            }
-
-            return null;
-        }
-
-        // Search
-        public async Task<List<UserModel>> SearchUsersAsync(string query)
-        {
-            var users = await GetAsync<List<UserDto>>($"api/users/search/?q={Uri.EscapeDataString(query)}");
-            return users?.ConvertAll(ConvertToUserModel) ?? new List<UserModel>();
-        }
-
-        // Generic HTTP methods
-        private async Task<T> GetAsync<T>(string endpoint)
+        public async Task<ApiResponse<LoginResponse>> LoginAsync(string username, string password)
         {
             try
             {
-                var response = await _httpClient.GetAsync($"{_baseUrl}/{endpoint}");
+                var loginRequest = new LoginRequest
+                {
+                    Username = username,
+                    Password = password
+                };
+
+                var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}/api/auth/login/", loginRequest);
 
                 if (response.IsSuccessStatusCode)
                 {
-                    var json = await response.Content.ReadAsStringAsync();
-                    return JsonSerializer.Deserialize<T>(json, GetJsonOptions());
+                    var content = await response.Content.ReadAsStringAsync();
+                    var loginResponse = JsonSerializer.Deserialize<LoginResponse>(content, new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    });
+
+                    if (loginResponse != null && !string.IsNullOrEmpty(loginResponse.Token))
+                    {
+                        SetAuthToken(loginResponse.Token);
+                        return new ApiResponse<LoginResponse>
+                        {
+                            Success = true,
+                            Data = loginResponse,
+                            Message = "Login successful"
+                        };
+                    }
                 }
 
-                await HandleErrorResponse(response);
-                return default(T);
+                var errorContent = await response.Content.ReadAsStringAsync();
+                return new ApiResponse<LoginResponse>
+                {
+                    Success = false,
+                    Message = $"Login failed: {response.StatusCode}",
+                    Errors = new List<string> { errorContent }
+                };
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"GET request failed: {ex.Message}");
-                return default(T);
+                return new ApiResponse<LoginResponse>
+                {
+                    Success = false,
+                    Message = "Login failed due to network error",
+                    Errors = new List<string> { ex.Message }
+                };
             }
         }
 
-        private async Task<T> PostAsync<T>(string endpoint, object data)
+        public async Task<ApiResponse<bool>> LogoutAsync()
         {
             try
             {
-                var json = JsonSerializer.Serialize(data, GetJsonOptions());
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var response = await _httpClient.PostAsync($"{_baseUrl}/api/auth/logout/", null);
+                ClearAuthToken();
 
-                var response = await _httpClient.PostAsync($"{_baseUrl}/{endpoint}", content);
-
-                if (response.IsSuccessStatusCode)
+                return new ApiResponse<bool>
                 {
-                    var responseJson = await response.Content.ReadAsStringAsync();
-                    return JsonSerializer.Deserialize<T>(responseJson, GetJsonOptions());
-                }
-
-                await HandleErrorResponse(response);
-                return default(T);
+                    Success = true,
+                    Data = true,
+                    Message = "Logout successful"
+                };
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"POST request failed: {ex.Message}");
-                return default(T);
+                ClearAuthToken(); // Clear token even if logout fails
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Logout failed",
+                    Errors = new List<string> { ex.Message }
+                };
             }
         }
 
-        private async Task HandleErrorResponse(HttpResponseMessage response)
+        public async Task<ApiResponse<List<Conversation>>> GetConversationsAsync()
         {
-            var errorContent = await response.Content.ReadAsStringAsync();
-            System.Diagnostics.Debug.WriteLine($"API Error {response.StatusCode}: {errorContent}");
-
-            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            try
             {
-                // Token expired, might need to refresh
-                throw new UnauthorizedAccessException("Authentication required");
+                var response = await _httpClient.GetAsync($"{_baseUrl}/api/messaging/conversations/");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    var conversations = JsonSerializer.Deserialize<List<Conversation>>(content, new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    }) ?? new List<Conversation>();
+
+                    return new ApiResponse<List<Conversation>>
+                    {
+                        Success = true,
+                        Data = conversations
+                    };
+                }
+
+                return new ApiResponse<List<Conversation>>
+                {
+                    Success = false,
+                    Message = $"Failed to fetch conversations: {response.StatusCode}",
+                    Data = new List<Conversation>()
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<List<Conversation>>
+                {
+                    Success = false,
+                    Message = "Failed to fetch conversations",
+                    Errors = new List<string> { ex.Message },
+                    Data = new List<Conversation>()
+                };
             }
         }
 
-        private JsonSerializerOptions GetJsonOptions()
+        public async Task<ApiResponse<List<Message>>> GetMessagesAsync(string conversationId, int page = 1, int pageSize = 50)
         {
-            return new JsonSerializerOptions
+            try
             {
-                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-                PropertyNameCaseInsensitive = true
-            };
+                var response = await _httpClient.GetAsync($"{_baseUrl}/api/messaging/conversations/{conversationId}/messages/?page={page}&page_size={pageSize}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    var messages = JsonSerializer.Deserialize<List<Message>>(content, new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    }) ?? new List<Message>();
+
+                    return new ApiResponse<List<Message>>
+                    {
+                        Success = true,
+                        Data = messages
+                    };
+                }
+
+                return new ApiResponse<List<Message>>
+                {
+                    Success = false,
+                    Message = $"Failed to fetch messages: {response.StatusCode}",
+                    Data = new List<Message>()
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<List<Message>>
+                {
+                    Success = false,
+                    Message = "Failed to fetch messages",
+                    Errors = new List<string> { ex.Message },
+                    Data = new List<Message>()
+                };
+            }
         }
 
-        // Model conversion methods
-        private ConversationModel ConvertToConversationModel(ConversationDto dto)
+        public async Task<ApiResponse<Message>> SendMessageAsync(string conversationId, string content, string messageType = "text", string? replyToId = null)
         {
-            return new ConversationModel
+            try
             {
-                Id = dto.Id,
-                Name = dto.Name,
-                ConversationType = dto.ConversationType,
-                LastMessageTime = dto.UpdatedAt,
-                LastMessagePreview = dto.LastMessagePreview ?? "",
-                UnreadCount = dto.UnreadCount,
-                IsActive = false
-            };
+                var messageData = new
+                {
+                    content = content,
+                    message_type = messageType,
+                    reply_to = replyToId
+                };
+
+                var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}/api/messaging/conversations/{conversationId}/messages/", messageData);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    var message = JsonSerializer.Deserialize<Message>(responseContent, new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    });
+
+                    return new ApiResponse<Message>
+                    {
+                        Success = true,
+                        Data = message,
+                        Message = "Message sent successfully"
+                    };
+                }
+
+                return new ApiResponse<Message>
+                {
+                    Success = false,
+                    Message = $"Failed to send message: {response.StatusCode}"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<Message>
+                {
+                    Success = false,
+                    Message = "Failed to send message",
+                    Errors = new List<string> { ex.Message }
+                };
+            }
         }
 
-        private MessageModel ConvertToMessageModel(MessageDto dto)
+        public async Task<ApiResponse<List<User>>> GetUsersAsync()
         {
-            return new MessageModel
+            try
             {
-                Id = dto.Id,
-                ConversationId = dto.ConversationId,
-                SenderId = dto.SenderId,
-                SenderName = dto.SenderName,
-                EncryptedContent = dto.EncryptedContent,
-                MessageType = dto.MessageType,
-                Timestamp = dto.CreatedAt,
-                IsSentByCurrentUser = dto.SenderId == App.CurrentUserId,
-                IsDecrypted = false
-            };
+                var response = await _httpClient.GetAsync($"{_baseUrl}/api/users/");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    var users = JsonSerializer.Deserialize<List<User>>(content, new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    }) ?? new List<User>();
+
+                    return new ApiResponse<List<User>>
+                    {
+                        Success = true,
+                        Data = users
+                    };
+                }
+
+                return new ApiResponse<List<User>>
+                {
+                    Success = false,
+                    Message = $"Failed to fetch users: {response.StatusCode}",
+                    Data = new List<User>()
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<List<User>>
+                {
+                    Success = false,
+                    Message = "Failed to fetch users",
+                    Errors = new List<string> { ex.Message },
+                    Data = new List<User>()
+                };
+            }
         }
 
-        private UserModel ConvertToUserModel(UserDto dto)
+        public async Task<ApiResponse<bool>> MarkMessageAsReadAsync(string messageId)
         {
-            return new UserModel
+            try
             {
-                Id = dto.Id,
-                Username = dto.Username,
-                FirstName = dto.FirstName,
-                LastName = dto.LastName,
-                Email = dto.Email
-            };
+                var response = await _httpClient.PostAsync($"{_baseUrl}/api/messaging/messages/{messageId}/read/", null);
+
+                return new ApiResponse<bool>
+                {
+                    Success = response.IsSuccessStatusCode,
+                    Data = response.IsSuccessStatusCode,
+                    Message = response.IsSuccessStatusCode ? "Message marked as read" : $"Failed to mark message as read: {response.StatusCode}"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Failed to mark message as read",
+                    Errors = new List<string> { ex.Message }
+                };
+            }
         }
 
         public void Dispose()
         {
             _httpClient?.Dispose();
         }
-    }
-
-    // DTOs for API communication
-    public class AuthResponse
-    {
-        public string Access { get; set; }
-        public string Refresh { get; set; }
-        public UserDto User { get; set; }
-    }
-
-    public class ConversationDto
-    {
-        public string Id { get; set; }
-        public string Name { get; set; }
-        public string ConversationType { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
-        public string LastMessagePreview { get; set; }
-        public int UnreadCount { get; set; }
-        public List<UserDto> Participants { get; set; }
-    }
-
-    public class MessageDto
-    {
-        public string Id { get; set; }
-        public string ConversationId { get; set; }
-        public string SenderId { get; set; }
-        public string SenderName { get; set; }
-        public string EncryptedContent { get; set; }
-        public string MessageType { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public string ReplyToId { get; set; }
-        public string FileName { get; set; }
-        public long? FileSize { get; set; }
-    }
-
-    public class UserDto
-    {
-        public string Id { get; set; }
-        public string Username { get; set; }
-        public string FirstName { get; set; }
-        public string LastName { get; set; }
-        public string Email { get; set; }
-    }
-
-    public class ConversationKeyResponse
-    {
-        public string EncryptedKey { get; set; }
-    }
-
-    public class FileUploadResponse
-    {
-        public string FileId { get; set; }
-        public string FileName { get; set; }
-        public long FileSize { get; set; }
-        public string FileType { get; set; }
-        public string DownloadUrl { get; set; }
     }
 }

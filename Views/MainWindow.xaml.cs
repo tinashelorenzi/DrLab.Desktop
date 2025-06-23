@@ -5,13 +5,15 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using System;
 using System.Collections.Generic;
-using Windows.UI;
+using System.Threading.Tasks;
 
 namespace DrLab.Desktop.Views
 {
     public sealed partial class MainWindow : Window
     {
         private readonly UserSessionManager _sessionManager;
+        private readonly NotificationService _notificationService;
+        private readonly ApiService _apiService;
         private readonly Dictionary<string, Type> _pageTypes;
 
         public MainWindow()
@@ -20,6 +22,8 @@ namespace DrLab.Desktop.Views
             this.Title = "DrLab LIMS - Laboratory Information Management System";
 
             _sessionManager = UserSessionManager.Instance;
+            _notificationService = NotificationService.Instance;
+            _apiService = (ApiService)App.ServiceProvider.GetService(typeof(ApiService))!;
 
             // Set this window as the main window for notifications
             NotificationService.SetMainWindow(this);
@@ -28,7 +32,8 @@ namespace DrLab.Desktop.Views
             _pageTypes = new Dictionary<string, Type>
             {
                 { "Dashboard", typeof(DashboardPage) },
-                { "Samples", typeof(SamplesPage) }
+                { "Samples", typeof(SamplesPage) },
+                { "Messaging", typeof(MessagingPage) }
                 // TODO: Add other pages as we create them:
                 // { "Results", typeof(ResultsPage) },
                 // { "Clients", typeof(ClientsPage) },
@@ -36,12 +41,13 @@ namespace DrLab.Desktop.Views
                 // { "QualityControl", typeof(QualityControlPage) },
                 // { "Reviews", typeof(ReviewsPage) },
                 // { "Reports", typeof(ReportsPage) },
-                // { "Messaging", typeof(MessagingPage) },
                 // { "Settings", typeof(SettingsPage) }
             };
 
             LoadUserInfo();
             NavigateToDefaultPage();
+
+            this.Closed += MainWindow_Closed;
         }
 
         private void LoadUserInfo()
@@ -52,6 +58,25 @@ namespace DrLab.Desktop.Views
 
             UserNameText.Text = userDisplayName ?? "Unknown User";
             UserDepartmentText.Text = userDepartment ?? "Unknown Department";
+
+            // Set user initials
+            UserInitials.Text = GetInitials(userDisplayName ?? "User");
+        }
+
+        private string GetInitials(string displayName)
+        {
+            if (string.IsNullOrEmpty(displayName)) return "U";
+
+            var parts = displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length >= 2)
+            {
+                return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+            }
+            else if (parts.Length == 1 && parts[0].Length > 0)
+            {
+                return parts[0][0].ToString().ToUpper();
+            }
+            return "U";
         }
 
         private void NavigateToDefaultPage()
@@ -75,104 +100,228 @@ namespace DrLab.Desktop.Views
                 }
                 else
                 {
-                    // Show "coming soon" page for unimplemented features
-                    ShowComingSoonPage(selectedItem.Content?.ToString() ?? tag);
+                    // Page not implemented yet
+                    _ = _notificationService.ShowInfoAsync($"{selectedItem.Content} page is coming soon!");
+
+                    // Revert selection to current page
+                    if (ContentFrame.Content != null)
+                    {
+                        var currentPageType = ContentFrame.Content.GetType();
+                        var currentTag = GetTagForPageType(currentPageType);
+                        if (!string.IsNullOrEmpty(currentTag))
+                        {
+                            foreach (var item in MainNavigationView.MenuItems)
+                            {
+                                if (item is NavigationViewItem navItem && navItem.Tag?.ToString() == currentTag)
+                                {
+                                    MainNavigationView.SelectedItem = navItem;
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        private void ShowComingSoonPage(string featureName)
-        {
-            // Create a temporary "coming soon" page content
-            var comingSoonContent = new StackPanel
-            {
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                Spacing = 20
-            };
-
-            var icon = new FontIcon
-            {
-                FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Segoe MDL2 Assets"),
-                Glyph = "\uE946", // Construction icon
-                FontSize = 48,
-                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Color.FromArgb(255, 255, 165, 0)) // Orange
-            };
-
-            var title = new TextBlock
-            {
-                Text = featureName,
-                FontSize = 24,
-                FontWeight = Microsoft.UI.Text.FontWeights.Bold,
-                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Color.FromArgb(255, 255, 255, 255)), // White
-                HorizontalAlignment = HorizontalAlignment.Center
-            };
-
-            var subtitle = new TextBlock
-            {
-                Text = "This feature is coming soon...",
-                FontSize = 14,
-                Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Color.FromArgb(255, 176, 255, 255)), // Light blue
-                HorizontalAlignment = HorizontalAlignment.Center
-            };
-
-            comingSoonContent.Children.Add(icon);
-            comingSoonContent.Children.Add(title);
-            comingSoonContent.Children.Add(subtitle);
-
-            ContentFrame.Content = comingSoonContent;
-            UpdatePageTitle(featureName, "Feature in development");
-        }
-
-        private void UpdatePageTitle(string title, string subtitle)
+        private void UpdatePageTitle(string title, string subtitle = "")
         {
             PageTitleText.Text = title;
-            PageSubtitleText.Text = subtitle;
+            PageSubtitleText.Text = string.IsNullOrEmpty(subtitle) ? "" : $" - {subtitle}";
         }
 
-        private string GetPageSubtitle(string pageTag)
+        private string GetPageSubtitle(string tag)
         {
-            return pageTag switch
+            return tag switch
             {
                 "Dashboard" => "Overview and key metrics",
-                "Samples" => "Sample management and tracking",
-                "Results" => "Test results and data entry",
-                "Clients" => "Customer and client management",
-                "Finance" => "Billing and financial records",
-                "QualityControl" => "QC testing and validation",
+                "Samples" => "Track and manage laboratory samples",
+                "Results" => "Enter and validate test results",
+                "Clients" => "Manage client information and projects",
+                "Finance" => "Billing and financial management",
+                "QualityControl" => "Quality control testing and validation",
                 "Reviews" => "Result validation and approval",
                 "Reports" => "Generate and manage reports",
                 "Messaging" => "Secure laboratory communications",
                 "Settings" => "System configuration and preferences",
-                _ => "Laboratory Information Management System"
+                _ => ""
             };
         }
 
-        private async void LogoutMenuItem_Click(object sender, RoutedEventArgs e)
+        private string? GetTagForPageType(Type pageType)
         {
-            // Optional: Call logout API
+            foreach (var kvp in _pageTypes)
+            {
+                if (kvp.Value == pageType)
+                    return kvp.Key;
+            }
+            return null;
+        }
+
+        // User profile menu handlers
+        private void UserProfileButton_Click(object sender, RoutedEventArgs e)
+        {
+            UserProfileFlyout.ShowAt(UserProfileButton);
+        }
+
+        private async void ProfileSettings_Click(object sender, RoutedEventArgs e)
+        {
+            UserProfileFlyout.Hide();
+            await _notificationService.ShowInfoAsync("Profile settings feature coming soon!");
+        }
+
+        private async void ChangePassword_Click(object sender, RoutedEventArgs e)
+        {
+            UserProfileFlyout.Hide();
+            await _notificationService.ShowInfoAsync("Change password feature coming soon!");
+        }
+
+        private async void SystemInfo_Click(object sender, RoutedEventArgs e)
+        {
+            UserProfileFlyout.Hide();
+            await _notificationService.ShowInfoAsync("System information feature coming soon!");
+        }
+
+        private async void SignOut_Click(object sender, RoutedEventArgs e)
+        {
+            UserProfileFlyout.Hide();
+            await SignOutAsync();
+        }
+
+        private async Task SignOutAsync()
+        {
             try
             {
-                var apiService = App.ServiceProvider.GetService(typeof(ApiService)) as ApiService;
-                if (apiService != null)
+                // Show confirmation dialog
+                var dialog = new ContentDialog
                 {
-                    await apiService.LogoutAsync();
+                    Title = "Sign Out",
+                    Content = "Are you sure you want to sign out?",
+                    PrimaryButtonText = "Sign Out",
+                    CloseButtonText = "Cancel",
+                    DefaultButton = ContentDialogButton.Close,
+                    XamlRoot = this.Content.XamlRoot
+                };
+
+                var result = await dialog.ShowAsync();
+                if (result == ContentDialogResult.Primary)
+                {
+                    // Logout from API
+                    await _apiService.LogoutAsync();
+
+                    // Clear session
+                    _sessionManager.ClearSession();
+
+                    // Show login window
+                    var loginWindow = new LoginWindow();
+                    loginWindow.Activate();
+
+                    // Close this window
+                    this.Close();
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignore API logout errors, proceed with local logout
+                await _notificationService.ShowErrorAsync($"Failed to sign out: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Sign out error: {ex}");
             }
+        }
 
-            // Clear the session
-            _sessionManager.ClearSession();
+        private void MainWindow_Closed(object sender, WindowEventArgs args)
+        {
+            // Cleanup resources
+            try
+            {
+                // If this is the last window, clean up the session
+                // In a real app, you might want to save the session for next time
 
-            // Close this window
-            this.Close();
+                System.Diagnostics.Debug.WriteLine("Main window closing");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error during window cleanup: {ex.Message}");
+            }
+        }
 
-            // Show login window again
-            var loginWindow = new LoginWindow();
-            loginWindow.Activate();
+        // Method to handle real-time updates (can be called from WebSocket service)
+        public void HandleRealTimeUpdate(string updateType, object data)
+        {
+            try
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    // Forward updates to current page if it supports real-time updates
+                    if (ContentFrame.Content is DashboardPage dashboardPage)
+                    {
+                        dashboardPage.HandleRealTimeUpdate(updateType, data);
+                    }
+                    else if (ContentFrame.Content is SamplesPage samplesPage)
+                    {
+                        samplesPage.HandleRealTimeUpdate(updateType, data);
+                    }
+                    else if (ContentFrame.Content is MessagingPage messagingPage)
+                    {
+                        messagingPage.HandleRealTimeUpdate(updateType, data);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to handle real-time update: {ex.Message}");
+            }
+        }
+
+        // Method to refresh current page data
+        public async Task RefreshCurrentPageAsync()
+        {
+            try
+            {
+                if (ContentFrame.Content is DashboardPage dashboardPage)
+                {
+                    await dashboardPage.RefreshAsync();
+                }
+                else if (ContentFrame.Content is SamplesPage samplesPage)
+                {
+                    await samplesPage.RefreshAsync();
+                }
+                else if (ContentFrame.Content is MessagingPage messagingPage)
+                {
+                    await messagingPage.RefreshAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                await _notificationService.ShowErrorAsync($"Failed to refresh page: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Page refresh error: {ex}");
+            }
+        }
+
+        // Method to navigate to a specific page programmatically
+        public void NavigateToPage(string pageTag)
+        {
+            try
+            {
+                if (_pageTypes.ContainsKey(pageTag))
+                {
+                    ContentFrame.Navigate(_pageTypes[pageTag]);
+
+                    // Update navigation selection
+                    foreach (var item in MainNavigationView.MenuItems)
+                    {
+                        if (item is NavigationViewItem navItem && navItem.Tag?.ToString() == pageTag)
+                        {
+                            MainNavigationView.SelectedItem = navItem;
+                            UpdatePageTitle(navItem.Content?.ToString() ?? pageTag, GetPageSubtitle(pageTag));
+                            break;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _ = _notificationService.ShowErrorAsync($"Failed to navigate to page: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Navigation error: {ex}");
+            }
         }
     }
 }
