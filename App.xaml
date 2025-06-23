@@ -6,6 +6,37 @@
     xmlns:local="using:DrLab.Desktop">
     <Application.Resources>
         <ResourceDictionary>
+            <!-- Converters -->
+            <local:InitialsConverter x:Key="InitialsConverter"/>
+            <local:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <local:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter"/>
+            <local:StringEmptyToVisibilityConverter x:Key="StringEmptyToVisibilityConverter"/>
+            <!-- Global Styles -->
+            <Style TargetType="Button" x:Key="IconButton">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}"
+                                CornerRadius="16"
+                                Padding="8">
+                                <ContentPresenter HorizontalAlignment="Center" 
+                                              VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#F0F0F0"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter Property="Background" Value="#E0E0E0"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
                 <!-- Other merged dictionaries here -->

@@ -294,3 +294,23 @@ namespace DrLab.Desktop.Services
         }
     }
 }
+namespace LIMS.Services
+{
+    public class NotificationService
+    {
+        public void ShowNotification(string title, string message, Action onClickAction = null)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                // For now, use a simple MessageBox
+                // In production, you'd want to use Windows Toast Notifications
+                var result = MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Information);
+
+                if (result == MessageBoxResult.OK && onClickAction != null)
+                {
+                    onClickAction.Invoke();
+                }
+            });
+        }
+    }
+}

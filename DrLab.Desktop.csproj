@@ -15,7 +15,12 @@
   <ItemGroup>
     <None Remove="Views\LoginWindow.xaml" />
     <None Remove="Views\MainWindow.xaml" />
+    <None Remove="Views\MessageView.xaml" />
+    <None Remove="Views\Messaging\ConversationListPanel.xaml" />
+    <None Remove="Views\Messaging\FileAttachmentDialog.xaml" />
+    <None Remove="Views\Messaging\MessageView.xaml" />
     <None Remove="Views\Pages\DashboardPage.xaml" />
+    <None Remove="Views\Pages\MessagingPage.xaml" />
     <None Remove="Views\Pages\SamplesPage.xaml" />
   </ItemGroup>
 
@@ -52,12 +57,26 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Helpers\" />
-    <Folder Include="ViewModels\" />
   </ItemGroup>
   <ItemGroup>
     <None Update="appsettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <Page Update="Views\Messaging\MessageView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Update="Views\MessageView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Update="Views\Messaging\FileAttachmentDialog.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Update="Views\Pages\MessagingPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Update="Views\Messaging\ConversationListPanel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Update="Views\Pages\SamplesPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>

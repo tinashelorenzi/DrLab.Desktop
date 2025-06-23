@@ -1,0 +1,137 @@
+<!--
+<Window x:Class="LIMS.Views.Messaging.FileAttachmentDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Attach File" 
+        Height="400" Width="500"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+    
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+<TextBlock Grid.Row="0" 
+                   Text="Select files to attach"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,20"/>
+
+<!-- File List -->
+<Border Grid.Row="1"
+                BorderBrush="#E0E0E0"
+                BorderThickness="1"
+                CornerRadius="4"
+                Background="#FAFAFA">
+    <ListBox Name="FileListBox"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     Margin="10">
+        <ListBox.ItemTemplate>
+            <DataTemplate>
+                <Grid Margin="0,5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- File Icon -->
+                    <Border Grid.Column="0"
+                                    Width="32" Height="32"
+                                    Background="#2196F3"
+                                    CornerRadius="4"
+                                    Margin="0,0,10,0">
+                        <TextBlock Text="📄"
+                                           FontSize="16"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                    </Border>
+
+                    <!-- File Info -->
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="{Binding Name}"
+                                           FontWeight="Medium"/>
+                        <TextBlock Text="{Binding SizeFormatted}"
+                                           FontSize="12"
+                                           Foreground="#757575"/>
+                    </StackPanel>
+
+                    <!-- Progress -->
+                    <ProgressBar Grid.Column="2"
+                                         Width="80"
+                                         Height="6"
+                                         Value="{Binding UploadProgress}"
+                                         Maximum="100"
+                                         Margin="10,0"
+                                         Visibility="{Binding IsUploading, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                    <!-- Remove Button -->
+                    <Button Grid.Column="3"
+                                    Width="24" Height="24"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Content="✕"
+                                    FontSize="12"
+                                    Foreground="#757575"
+                                    Click="RemoveFile_Click"
+                                    Tag="{Binding}"/>
+                </Grid>
+            </DataTemplate>
+        </ListBox.ItemTemplate>
+    </ListBox>
+</Border>
+
+<!-- Add Files Section -->
+<StackPanel Grid.Row="2" 
+                    Orientation="Horizontal" 
+                    Margin="0,15,0,0">
+    <Button Name="BrowseButton"
+                    Content="Browse Files..."
+                    Padding="15,8"
+                    Background="#2196F3"
+                    Foreground="White"
+                    BorderThickness="0"
+                    CornerRadius="4"
+                    Click="BrowseButton_Click"/>
+
+    <TextBlock Text="or drag and drop files here"
+                       VerticalAlignment="Center"
+                       Margin="15,0,0,0"
+                       Foreground="#757575"/>
+</StackPanel>
+
+<!-- Action Buttons -->
+<StackPanel Grid.Row="3" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right"
+                    Margin="0,20,0,0">
+    <Button Name="CancelButton"
+                    Content="Cancel"
+                    Width="80"
+                    Height="35"
+                    Margin="0,0,10,0"
+                    Background="Transparent"
+                    BorderBrush="#BDBDBD"
+                    Click="CancelButton_Click"/>
+
+    <Button Name="SendButton"
+                    Content="Send"
+                    Width="80"
+                    Height="35"
+                    Background="#4CAF50"
+                    Foreground="White"
+                    BorderThickness="0"
+                    CornerRadius="4"
+                    Click="SendButton_Click"
+                    IsEnabled="{Binding HasFiles}"/>
+</StackPanel>
+</Grid>
+</Window>
+-->
